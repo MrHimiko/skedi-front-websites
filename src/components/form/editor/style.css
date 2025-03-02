@@ -1,0 +1,165 @@
+.c-editor
+{
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background-color: var(--background-0);
+    padding: var(--spacing-lg);
+    min-height: 180px;
+    max-height: 300px;
+}
+
+.c-editor.big 
+{
+    min-height: 70vh;
+    padding: var(--spacing-5xl);
+}
+
+.c-editor.focus 
+{
+    border: 1px solid var(--brand-default);
+}
+
+.c-editor > textarea 
+{
+    opacity: 0;
+    pointer-events: none;
+    position: fixed;
+}
+
+.c-editor > div > div
+{
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.c-editor .floating-menu,
+.c-editor .bubble-menu
+{
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-primary);
+    background-color: var(--background-2);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.c-editor .floating-menu button,
+.c-editor .bubble-menu button
+{
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    color: var(--text-secondary);
+}
+
+.c-editor .floating-menu button:hover,
+.c-editor .bubble-menu button:hover,
+.c-editor .floating-menu button.is-active,
+.c-editor .bubble-menu button.is-active
+{
+    background-color: var(--background-3);
+}
+
+.c-editor ul 
+{
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.c-editor ul li
+{
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    background: var(--background-1);
+    width: fit-content;
+    padding: var(--spacing-xs) var(--spacing-xl);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.c-editor ul li label 
+{
+    height: 18px;
+}
+
+.c-editor mark 
+{
+    background-color: var(--yellow-fill);
+    color: var(--yellow-default);
+}
+
+/* Table */
+.c-editor table 
+{
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    background: var(--background-1);
+    border: 1px solid var(--border);
+    text-align: left;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-primary);
+}
+
+.c-editor table td,
+.c-editor table th 
+{
+    box-sizing: border-box;
+    min-width: 1em;
+    padding: 6px 8px;
+    position: relative;
+    vertical-align: top;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.c-editor table td > *,
+.c-editor table th > * {
+    margin-bottom: 0;
+}
+
+.c-editor table th 
+{
+    font-weight: bold;
+    background-color: var(--background-2);
+    color: var(--text-primary);
+}
+
+.c-editor table .selectedCell:after 
+{
+    background: var(--brand-fill);
+    content: "";
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+}
+
+.c-editor table .column-resize-handle 
+{
+    background-color: var(--brand-default);
+    bottom: -2px;
+    z-index: 10000000;
+    pointer-events: none;
+    position: absolute;
+    right: -2px;
+    top: 0;
+    width: 2px;
+    cursor: e-resize!important;
+}
+
+.c-editor .is-editor-empty::before 
+{
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--text-tertiary);
+    pointer-events: none;
+    height: 0;
+}

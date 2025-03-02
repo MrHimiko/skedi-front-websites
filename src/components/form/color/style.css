@@ -1,0 +1,78 @@
+.c-color 
+{
+    width: 100%;
+}
+
+.c-color .color
+{
+    background-color: var(--green-default);
+    width: 50px;
+    height: 20px;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border);
+}
+
+.c-color-dropdown 
+{
+    background-color: var(--background-0);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    width: 100%;
+    pointer-events: none;
+}
+
+.c-color-dropdown .vc-chrome 
+{
+    background-color: transparent!important;
+    background: transparent;
+    box-shadow: none!important;
+    border-radius: 6px;
+    pointer-events: auto;
+    width: 100%;
+    overflow: hidden;
+}
+
+.c-color-dropdown .vc-saturation
+{
+    border-radius: 6px;
+}
+
+.c-color-dropdown .vc-chrome-body
+{
+    background-color: transparent;
+}
+
+.c-color-dropdown .vc-chrome-fields .vc-input__input
+{
+    box-shadow: unset!important;
+    border: 1px solid var(--border)!important;
+    height: 36px;
+    background-color: var(--background-1);
+    color: var(--text-primary);
+}
+
+.c-color-dropdown .vc-chrome-alpha-wrap,
+.c-color-dropdown .vc-chrome-hue-wrap
+{
+    height: 15px!important;
+    border-radius: var(--radius-sm)!important;
+    overflow: hidden;
+    transform: translateY(7.5px);
+}
+
+.c-color-dropdown .vc-chrome-alpha-wrap .vc-alpha-picker, 
+.c-color-dropdown .vc-chrome-hue-wrap .vc-hue-picker 
+{
+    width: 12px!important;
+    height: 12px!important;
+    transform: translateY(0px) translateX(-6px);
+}
+.c-color-dropdown .vc-chrome-toggle-btn 
+{
+    display: none;
+}
+
+.c-color-dropdown .vc-chrome-alpha-wrap
+{
+    display: none;
+}

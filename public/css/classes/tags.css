@@ -1,0 +1,40 @@
+.tag 
+{
+    display: inline-block;
+    background-color: var(--brand-fill);
+    padding: 0 var(--spacing-md);
+    color: var(--brand-default);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: var(--text-xs);
+}
+
+.tag.yellow
+{
+    background-color: var(--yellow-fill);
+    color: var(--yellow-default);
+}
+
+.tag.green
+{
+    background-color: var(--green-fill);
+    color: var(--green-default);
+}
+
+.tag.orange
+{
+    background-color: var(--orange-fill);
+    color: var(--orange-default);
+}
+
+.tag.red
+{
+    background-color: var(--red-fill);
+    color: var(--red-default);
+}
+
+.tag.bg3 
+{
+    background-color: var(--background-3);
+    color: var(--text-secondary);
+}

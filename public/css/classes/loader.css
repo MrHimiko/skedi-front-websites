@@ -1,0 +1,39 @@
+.loader
+{
+    display: block;
+    width: 32px;
+    height: 32px;
+    border-radius: 32px;
+    outline: 5px solid rgb(255 255 255 / 30%);
+    animation: rotate360 1s linear infinite;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+}
+
+.loader.mini 
+{
+    width: 20px;
+    height: 20px;
+}
+
+.loader.relative 
+{
+    position: relative;
+}
+
+.loader > div
+{
+    width: 5px;
+    height: 5px;
+    border-radius: 5px;
+    background-color: var(--white);
+    left: -5px;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    position: absolute;
+}

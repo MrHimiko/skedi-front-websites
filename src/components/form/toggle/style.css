@@ -1,0 +1,84 @@
+.c-toggle > .holder 
+{
+    display: inline-block;
+    width: 52px;
+    height: 26px;
+    position: relative;
+    cursor: pointer;
+    background-color: var(--background-0);
+    border-radius: var(--radius-2xl);
+}
+
+.c-toggle.bg1 > .holder
+{
+    background-color: var(--background-1);
+}
+
+.c-toggle.bg2 > .holder
+{
+    background-color: var(--background-2);
+}
+
+.c-toggle.bg3 > .holder
+{
+    background-color: var(--background-3);
+}
+
+.c-toggle > div
+{
+    margin-bottom: var(--spacing-lg);
+}
+
+.c-toggle > div > label 
+{
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.c-toggle > .holder input {
+
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.c-toggle > .holder > div > .slider 
+{
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    background-color: var(--background-3);
+    border-radius: 50px;
+    transition: 0.3s;
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    top: 3px;
+}
+
+.c-toggle > .holder > input:checked + div > .slider 
+{
+    background-color: var(--green-default);
+    transform: translateX(23px);
+}
+
+.c-toggle .icon-on 
+{
+    position: absolute;
+    right: 8px;
+    top: 0;
+    bottom: 0;
+    font-size: 14px!important;
+    pointer-events: none;
+}
+
+.c-toggle .icon-off 
+{
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    font-size: 14px!important;
+    pointer-events: none;
+}

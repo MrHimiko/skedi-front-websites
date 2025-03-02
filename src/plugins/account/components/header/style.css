@@ -1,0 +1,45 @@
+.account-c-header 
+{
+    width: 100%;
+    text-align: center;
+}
+
+.account-c-header > img 
+{
+    margin: 0 auto;
+}
+
+.account-c-header > .description
+{
+    color: var(--text-secondary);
+    margin-top: var(--spacing-lg);
+}
+
+/* Separator */
+
+.account-c-header > .separator 
+{
+    position: relative;
+}
+
+.account-c-header > .separator > div
+{
+    height: 1px; 
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    bottom: 0;
+    margin: auto;
+    background-color: var(--border-primary);
+}
+
+.account-c-header > .separator > p
+{
+    display: inline-block;
+    background-color: var(--background-1);
+    padding-left: 20px;
+    padding-right: 20px;
+    z-index: 100;
+    position: relative;
+}

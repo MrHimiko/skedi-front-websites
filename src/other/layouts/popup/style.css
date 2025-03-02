@@ -1,0 +1,29 @@
+.l-popup
+{
+    background: var(--background-1);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    min-width: 420px;
+    height: calc(100vh - 50px);
+    display: flex;
+    flex-direction: column;
+}
+
+.l-popup.h-auto 
+{
+    height: auto;
+}
+
+.l-popup > .top 
+{
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-bottom: 1px solid var(--border);
+    height: 51px;
+}
+
+.l-popup > .content 
+{
+    flex: 1;
+    padding: var(--spacing-xl);
+    height: calc(100vh - 50px - 51px);
+}

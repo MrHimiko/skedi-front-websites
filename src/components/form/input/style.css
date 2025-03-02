@@ -1,0 +1,54 @@
+.c-input > .holder 
+{
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    display: flex;
+    height: 36px;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--background-0);
+}
+
+.c-input > .holder:focus-within
+{
+    outline: 1px solid var(--black);
+}
+
+.c-input > div:not(.holder):first-child 
+{
+    margin-bottom: var(--spacing-lg);
+}
+
+.c-input > div > label 
+{
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.c-input > .holder > input 
+{
+    background-color: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    padding: 0 var(--spacing-lg);
+    flex: 1;
+    height: 34px;
+    width: 100%;
+}
+
+.c-input > .holder > input::placeholder
+{
+    color: var(--text-tertiary);
+}
+
+.c-input > .holder > .icon.left 
+{
+    margin-left: 10px;
+}
+
+.c-input > .holder > .icon.right
+{
+    margin-right: 10px;
+}

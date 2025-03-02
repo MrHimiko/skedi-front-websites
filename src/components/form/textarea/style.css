@@ -1,0 +1,58 @@
+.c-textarea > .holder 
+{
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    display: flex;
+    height: max-content;
+    align-items: start;
+    justify-content: space-between;
+    background-color: var(--background-0);
+}
+
+.c-textarea > .holder:focus-within
+{
+    border: 1px solid var(--brand-default);
+}
+
+.c-textarea > div > label 
+{
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.c-textarea > .holder > textarea 
+{
+    background-color: transparent;
+    border: none;
+    min-height: 180px;
+    max-height: 300px;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    padding: var(--spacing-lg);
+    flex: 1;
+    resize: none;
+}
+
+.c-textarea > .holder > textarea::placeholder
+{
+    color: var(--text-tertiary);
+}
+
+.c-textarea > .holder > .icon.left 
+{
+    padding-left: 10px;
+    padding-top: 8px;
+}
+
+.c-textarea > .holder > .icon.right
+{
+    padding-right: 10px;
+    padding-top: 8px;
+}
+
+.c-textarea.mini > .holder > textarea 
+{
+    min-height: 90px;
+    max-height: 90px;
+}

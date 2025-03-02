@@ -1,0 +1,10 @@
+.search-c 
+{
+    height: 40px;
+    width: 320px;
+}
+
+.search-c .c-input > .holder
+{
+    background-color: var(--background-0);
+}

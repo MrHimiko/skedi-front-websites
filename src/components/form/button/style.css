@@ -1,0 +1,109 @@
+.c-button 
+{
+    width: 100%;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    min-width: 100px;
+    transition: 0.15s background;
+    position: relative;
+    color: white;
+    background-color: var(--black);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.c-button:hover {
+    background-color: #212121;
+}
+
+.c-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+.c-button.w-auto
+{
+    width: fit-content;
+}
+
+
+.c-button.secondary 
+{
+    border: 1px solid var(--border);
+    background-color: var(--background-1);
+    color: var(--black);
+}
+
+.c-button.secondary:hover 
+{
+    background-color: var(--black);
+    color: var(--white);
+}
+
+
+.c-button.tertiary 
+{
+    border: 1px solid var(--border);
+    background-color: var(--white);
+    color: var(--black);
+}
+
+.c-button.tertiary:hover 
+{
+    background-color: var(--black);
+    color: var(--white);
+    border: 1px solid var(--black);
+}
+
+.c-button.icon {
+    width: 30px ;
+    max-width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+    min-width: 30px;
+}
+
+
+
+/* Icons */
+.c-button.brand i,
+.c-button.green i,
+.c-button.red i
+{
+    color: var(--white)!important;
+    opacity: 1;
+}
+
+/* Loading */
+
+.c-button > .loader 
+{
+    display: none;
+}
+
+.c-button.loading 
+{
+    pointer-events: none;
+}
+
+.c-button.loading > * 
+{
+    display: none;
+}
+
+.c-button.loading > .loader 
+{
+    display: block;
+    width: 16px;
+    height: 16px;
+}

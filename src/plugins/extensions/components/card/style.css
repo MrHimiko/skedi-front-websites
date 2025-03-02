@@ -1,0 +1,8 @@
+.extensions-c-card
+{
+    padding: var(--spacing-2xl);
+    background-color: var(--background-0);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}

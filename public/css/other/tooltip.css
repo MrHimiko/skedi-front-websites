@@ -1,0 +1,11 @@
+[data-theme="custom"] 
+{
+    background-color: var(--background-0);
+    color: var(--black);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px;
+    border: 1px solid var(--border);
+    box-shadow: 0 5px 22px -10px rgba(0,0,0,0.27)
+}

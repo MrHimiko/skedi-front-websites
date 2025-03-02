@@ -1,0 +1,74 @@
+.c-repeater 
+{
+    background-color: var(--background-0);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-md);
+    position: relative;
+    border: 1px solid var(--border);
+}
+
+.c-repeater > textarea
+{
+    opacity: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
+.c-repeater > .items 
+{
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.c-repeater > .items:not(:empty)
+{
+    margin-bottom: var(--spacing-xl);
+}
+
+.c-repeater > .items > .item
+{
+    background-color: var(--background-1);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.c-repeater > .items > .item > .top
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.c-repeater > .items > .item > .bottom 
+{
+    border-top: 1px solid var(--border);
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+}
+
+.c-repeater > .items > .item > .top > .left
+{
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    gap: var(--spacing-md);
+}
+
+.c-repeater > .items > .item > .top > .right
+{
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.c-repeater > .items > .item > .top > .right > .toggle > img
+{
+    transition: 0.5s transform;
+}
+
+.c-repeater > .items > .item > .top > .right > .toggle.opened > img
+{
+    transform: rotate(-90deg);
+}

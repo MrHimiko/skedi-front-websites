@@ -1,0 +1,112 @@
+.rich-text
+{
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background-color: var(--background-0);
+    padding: var(--spacing-5xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.rich-text ul 
+{
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.rich-text ul li
+{
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    background: var(--background-1);
+    width: fit-content;
+    padding: var(--spacing-xs) var(--spacing-xl);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.rich-text ul li label 
+{
+    height: 18px;
+}
+
+.rich-text mark 
+{
+    background-color: var(--yellow-fill);
+    color: var(--yellow-default);
+}
+
+/* Table */
+.rich-text table 
+{
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    background: var(--background-1);
+    border: 1px solid var(--border);
+    text-align: left;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-primary);
+}
+
+.rich-text table td,
+.rich-text table th 
+{
+    box-sizing: border-box;
+    min-width: 1em;
+    padding: 6px 8px;
+    position: relative;
+    vertical-align: top;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.rich-text table td > *,
+.rich-text table th > * {
+    margin-bottom: 0;
+}
+
+.rich-text table th 
+{
+    font-weight: bold;
+    background-color: var(--background-2);
+    color: var(--text-primary);
+}
+
+.rich-text table .selectedCell:after 
+{
+    background: var(--brand-fill);
+    content: "";
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+}
+
+.rich-text table .column-resize-handle 
+{
+    background-color: var(--brand-default);
+    bottom: -2px;
+    z-index: 10000000;
+    pointer-events: none;
+    position: absolute;
+    right: -2px;
+    top: 0;
+    width: 2px;
+    cursor: e-resize!important;
+}
+
+.rich-text .is-editor-empty::before 
+{
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--text-tertiary);
+    pointer-events: none;
+    height: 0;
+}

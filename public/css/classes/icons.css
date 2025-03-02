@@ -1,0 +1,44 @@
+i 
+{
+    font-size: 18px!important;
+    color: var(--black);
+    opacity: 0.6;
+    font-family: 'Material Icons Outlined';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.dark i 
+{
+    color: var(--white);
+}
+
+i.icon-brand
+{
+    color: var(--brand-default)!important;
+    opacity: 1;
+}
+
+i.icon-white 
+{
+    color: var(--white)!important;
+    opacity: 1;
+}
+
+i.icon-xs { font-size: 14px!important; }
+i.icon-sm { font-size: 16px!important; }
+i.icon-md { font-size: 18px!important; }
+i.icon-lg { font-size: 20px!important; }
+i.icon-xl { font-size: 24px!important; }

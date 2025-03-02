@@ -1,0 +1,9 @@
+.c-tippy > div.popup
+{
+    transform: translate(0)!important;
+}
+
+.c-tippy > div.popup > div 
+{
+    max-width: 100%!important;
+}

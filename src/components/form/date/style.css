@@ -1,0 +1,60 @@
+.c-date-dropdown .dp__main 
+{
+    display: block;
+}
+
+.c-date-dropdown .dp__theme_dark 
+{
+    --dp-background-color: var(--background-0);
+    --dp-text-color: var(--text-primary);
+    --dp-hover-color: var(--background-2);
+    --dp-hover-text-color: var(--text-secondary);
+    --dp-hover-icon-color: var(--text-tertiary);
+    --dp-primary-color: var(--brand-default);
+    --dp-primary-disabled-color: var(--brand-active);
+    --dp-primary-text-color: var(--white);
+    --dp-secondary-color: var(--text-quaternary);
+    --dp-border-color: var(--border-primary);
+    --dp-menu-border-color: var(--border);
+    --dp-border-color-hover: var(--brand-hover);
+    --dp-border-color-focus: var(--brand-stroke);
+    --dp-disabled-color: var(--border);
+    --dp-disabled-color-text: var(--text-tertiary);
+    --dp-scroll-bar-background: var(--background-1);
+    --dp-scroll-bar-color: var(--background-3);
+    --dp-success-color: var(--green-default);
+    --dp-success-color-disabled: var(--green-active);
+    --dp-icon-color: var(--text-tertiary);
+    --dp-danger-color: var(--red-default);
+    --dp-marker-color: var(--red-hover);
+    --dp-tooltip-color: var(--background-3);
+    --dp-highlight-color: var(--brand-fill);
+    --dp-range-between-dates-background-color: var(--dp-hover-color);
+    --dp-range-between-dates-text-color: var(--dp-hover-text-color);
+    --dp-range-between-border-color: var(--dp-hover-color);
+    --dp-loader: 5px solid var(--brand-default);
+    --dp-button-icon-height: 16px;
+}
+
+.c-date-dropdown button 
+{
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--text-primary);
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.c-date-dropdown .dp--tp-wrap
+{
+    max-width: 100%;
+    width: 100%;
+    text-align: center;
+}
+
+.c-date-dropdown .dp__button:hover
+{
+    display: flex;
+    align-items: center;
+}

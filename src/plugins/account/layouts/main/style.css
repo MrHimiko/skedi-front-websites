@@ -1,0 +1,42 @@
+.account-l-main
+{
+    display: flex;
+    height: 100vh;
+    background: var(--background-1);
+}
+
+.account-l-main > div:first-child
+{
+    flex: 1;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid var(--border);
+    justify-content: center;
+}
+
+.account-l-main > div:last-child
+{
+    width: 40%;
+    max-width: 800px;
+    background-color: var(--black);
+    display: flex;
+    align-items: end;
+    justify-content: end;
+}
+
+.account-l-main > div:last-child img {
+    height: 100%;
+    object-fit: cover;
+    object-position: left;
+    padding: 10px;
+    background: white;
+    border-radius: 0;
+}
+
+@media (max-width: 991.98px) 
+{
+    .account-l-main > div:last-child
+    {
+        display: none;
+    }
+}

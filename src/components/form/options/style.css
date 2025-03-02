@@ -1,0 +1,36 @@
+.c-options
+{
+    background-color: var(--background-0);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    display: flex;
+    width: fit-content;
+    padding: 3px;
+}
+
+.c-options > *
+{
+    padding: var(--spacing-lg) var(--spacing-2xl);
+    display: block;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-md);
+}
+
+.c-options > *:hover
+{
+    background-color: var(--background-1);
+}
+
+.c-options > * > .left 
+{
+    display: flex;
+    gap: var(--spacing-lg);
+}
+
+.c-options i 
+{
+    font-size: var(--text-base)!important;
+}

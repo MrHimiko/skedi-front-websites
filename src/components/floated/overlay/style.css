@@ -1,0 +1,21 @@
+.c-overlay 
+{
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.15s all;
+    z-index: 10000000;
+}
+
+.c-overlay.end 
+{
+    justify-content: end;
+    padding: var(--spacing-4xl);
+}
+
+.c-overlay.background
+{
+    background-color: rgb(0 0 0 / 40%);
+}

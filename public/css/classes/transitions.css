@@ -1,0 +1,24 @@
+.transition-border
+{
+    transition: 0.15s border;
+    border: 1px solid var(--border);
+}
+
+.transition-border:hover 
+{
+    border: 1px solid var(--border-primary);
+}
+
+
+.transition-background 
+{
+    background: linear-gradient(to right, rgb(0 0 0 / 5%), rgb(255 255 255 / 5%));
+    background-size: 0 100%; 
+    background-repeat: no-repeat;
+    transition: background-size 1s ease-in-out;
+  }
+  
+.transition-background:hover 
+{
+    background-size: 100% 100%; 
+}

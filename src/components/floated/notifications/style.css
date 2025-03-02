@@ -1,0 +1,63 @@
+.c-notifications 
+{
+    position: fixed!important;
+    right: 0;
+    top: 0;
+    width: 320px;
+    height: 100vh;
+    z-index: 1000000;
+    pointer-events: none;
+    padding: var(--spacing-2xl);
+}
+
+.c-notifications > div 
+{
+    width: 100%;
+    display: flex;
+    justify-content: end;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.c-notifications > div > div 
+{
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-xl) var(--spacing-2xl);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--background-0);
+    gap: var(--spacing-xl);
+}
+
+.c-notifications img
+{
+    width: 24px;
+    height: 24px;
+}
+
+/* Colors */
+.c-notifications > div > div.red
+{
+    border-left: 3px solid var(--red-default);
+    color: var(--red-default);
+}
+
+.c-notifications > div > div.green
+{
+    border-left: 3px solid var(--green-default);
+    color: var(--green-default);
+}
+
+.c-notifications > div > div.orange
+{
+    border-left: 3px solid var(--orange-default);
+    color: var(--orange-default);
+}
+
+.c-notifications > div > div.blue
+{
+    border-left: 3px solid var(--blue-default);
+    color: var(--blue-default);
+}
