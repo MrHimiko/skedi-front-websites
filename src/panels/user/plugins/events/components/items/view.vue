@@ -295,16 +295,25 @@
                             :iconLeft="{ component: PhGearSix, weight: 'bold' }" />
 
                             <button-component 
-                                as="tertiary icon" :iconLeft="{ component: PhPlus, weight: 'bold' }"  
+                                as="tertiary icon" 
+                                :iconLeft="{ component: PhPlus, weight: 'bold' }" 
+                                v-tooltip="{ content: 'New event type' }" 
                                 v-popup="{
-                                component: 
-                                    EventCreateForm,
+                                    component: EventCreateForm,
                                     overlay: { position: 'center' },
                                     properties: {
                                         title: 'New event type',
-                                    }
-                                }
-                            "/>
+                                        preselectedOrganizationId: org.id,
+                                        callback: (event, data, response, success) => {
+                                            if (success) {
+                                                reloadData();
+                                                console.log('Event created', response);
+                                            }
+                                        },
+                                    },
+                                    
+                                }"
+                            />
                     </div>
                 </div>
             </div>

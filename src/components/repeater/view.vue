@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import './style.css';
 
-import { ref } from 'vue';
-
+import { ref, watch, onMounted, defineExpose } from 'vue';
+import {  PhPlus } from "@phosphor-icons/vue";
 import ButtonComponent from '@form/button/view.vue';
 import BuilderComponent from '@/components/builder/view.vue';
 
-defineProps({
+const props = defineProps({
     components: {
         type: Array,
         required: true,
+    },
+    initialItems: {
+        type: Array,
+        default: () => []
     },
     label: {
         type: String,
@@ -22,9 +26,33 @@ defineProps({
 const items = ref([] as any);
 const toggled = ref([] as any); 
 
+// Initialize with any provided items
+onMounted(() => {
+    resetItems();
+});
+
+// Watch for changes in initialItems
+watch(() => props.initialItems, (newItems) => {
+    resetItems();
+}, { deep: true });
+
+// Reset all items based on initialItems prop
+function resetItems() {
+    // Clear current items
+    items.value = [];
+    
+    // Add new items for each initialItem
+    if (props.initialItems && props.initialItems.length > 0) {
+        props.initialItems.forEach(() => {
+            addItem();
+        });
+    }
+}
+
 function addItem() 
 {
     items.value.push({});
+    return items.value.length - 1; // Return the index of the new item
 }
 
 function removeItem(index: number) 
@@ -43,9 +71,14 @@ function toggle(index: number)
         toggled.value.push(index); 
     }
 }
-</script>
 
-<!-- v-sortable="{ options: { handle: '.i-sortable-handle' } }" -->
+// Expose methods for parent components
+defineExpose({
+    addItem,
+    removeItem,
+    getItems: () => items.value
+});
+</script>
 
 <template>
     <div class="c-repeater">
@@ -61,20 +94,25 @@ function toggle(index: number)
                             <i>keyboard_arrow_down</i>
                         </div>
 
-                        <i class="action" @click="removeItem(itemIndex)">close</i>
+                        <i v-tooltip="{ content: 'Remove item' }" class="action" @click="removeItem(itemIndex)">close</i>
                     </div>
                 </div>
                 <div class="bottom" v-show="!toggled.includes(itemIndex)">
-                    <builder-component :name="name" :actions="false" :tabs="[
-                        {
-                            title: 'General',
-                            components,
-                        }
-                    ]"></builder-component>
+                    <builder-component 
+                      :name="name" 
+                      :actions="false" 
+                      :tabs="[
+                          {
+                              title: 'General',
+                              components,
+                          }
+                      ]"
+                      :values="() => props.initialItems && props.initialItems.length > itemIndex ? props.initialItems[itemIndex] : {}"
+                    ></builder-component>
                 </div>
             </div>
         </div>
 
-        <button-component :label="'Add ' + (label ? label : 'Item')" @click="addItem"></button-component>
+        <button-component :iconLeft="{ component: PhPlus, weight: 'bold' }" as="secondary"  :label="'Add ' + (label ? label : 'Item')" @click="addItem"></button-component>
     </div>
 </template>

@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, toRaw, computed } from 'vue';
+import { common } from '@utils/common';
 import RepeaterComponent from '@/components/repeater/view.vue';
 import ButtonComponent from '@form/button/view.vue';
 import { api } from '@utils/api';
 
 const props = defineProps({
-  // These props come from the popup configuration
   endpoint: {
     type: String,
     required: true
@@ -25,10 +25,14 @@ const props = defineProps({
 });
 
 const loading = ref(false);
-const durations = ref([]);
-const durationRepeater = ref(null);
+// Initialize with default value, then update it in onMounted
+const durations = ref([{
+  title: '',
+  description: '',
+  duration: 30
+}]);
 
-// Define the form components for each duration item
+// Form components for duration items
 const durationComponents = [
   {
     type: 'Input',
@@ -51,44 +55,49 @@ const durationComponents = [
   }
 ];
 
-// Initialize with values from props
-onMounted(() => {
-  const initialValues = props.values();
-  
-  // Get duration from initialValues
-  let initialDurations = initialValues.duration;
-  
-  // Handle different formats of duration (including legacy integer format)
-  if (typeof initialDurations === 'number') {
-    // Convert legacy integer format to array format
-    initialDurations = [{
+// Extract and initialize duration data before mounting
+const extractDurations = () => {
+  try {
+    const initialValues = props.values();
+    // Convert proxy to raw object to avoid reactivity issues
+    let initialDurations = toRaw(initialValues.duration);
+    
+    // Handle different formats of duration
+    if (typeof initialDurations === 'number') {
+      return [{
+        title: '',
+        description: '',
+        duration: initialDurations
+      }];
+    } else if (Array.isArray(initialDurations) && initialDurations.length > 0) {
+      return initialDurations;
+    }
+    
+    // Default value if none of the above conditions are met
+    return [{
       title: '',
       description: '',
-      duration: initialDurations
+      duration: 30
     }];
-  } else if (!Array.isArray(initialDurations) || initialDurations.length === 0) {
-    // Default to one empty item if no durations are provided
-    initialDurations = [{
+  } catch (error) {
+    console.error('Error extracting durations:', error);
+    return [{
       title: '',
       description: '',
       duration: 30
     }];
   }
-  
-  durations.value = initialDurations;
-  
-  // Initialize repeater with items
-  setTimeout(() => {
-    if (durationRepeater.value) {
-      // Add an item for each duration
-      durations.value.forEach(() => {
-        durationRepeater.value.addItem();
-      });
-    }
-  }, 100);
+};
+
+// Initialize durations immediately
+durations.value = extractDurations();
+
+// Also update in onMounted to ensure we have the latest values
+onMounted(() => {
+  durations.value = extractDurations();
 });
 
-// Method to get duration data from the repeater
+// Get duration data from the repeater DOM elements
 function getDurationData() {
   const builders = document.querySelectorAll('.c-repeater .c-builder');
   const durationsData = [];
@@ -104,7 +113,6 @@ function getDurationData() {
         durationData.description = element.value || '';
       } else if (element.name === 'duration') {
         const durationValue = parseInt(element.value);
-        // Ensure duration is a positive integer
         durationData.duration = isNaN(durationValue) || durationValue <= 0 ? 30 : Math.floor(durationValue);
       }
     });
@@ -115,38 +123,39 @@ function getDurationData() {
   return durationsData;
 }
 
-// Save changes
+
+
+// Save changes to API
 async function saveChanges() {
   if (loading.value) return;
+  
+  const durations = getDurationData();
+  
+  // Check if there's at least one duration
+  if (durations.length === 0) {
+    common.notification('Minimum one duration slot is required', false);
+    return;
+  }
   
   loading.value = true;
   
   try {
-    const durations = getDurationData();
-    
-    // Validate that we have at least one duration
-    if (durations.length === 0) {
-      durations.push({ title: '', description: '', duration: 30 });
-    }
-    
-    // Validate that all durations have a valid duration value
+    // Ensure all durations have valid values
     durations.forEach(d => {
       if (!d.duration || d.duration <= 0) {
         d.duration = 30;
       }
     });
     
-    // Make API request
+    // API request
     const response = await api[props.type.toLowerCase()](props.endpoint, { duration: durations });
     
-    // Call the callback with the response
     if (props.callback) {
       props.callback(null, { duration: durations }, response, response.success);
     }
   } catch (error) {
     console.error('Failed to save durations:', error);
     
-    // Call callback with error
     if (props.callback) {
       props.callback(error, { duration: getDurationData() }, null, false);
     }
@@ -158,31 +167,35 @@ async function saveChanges() {
 
 <template>
   <div class="event-durations">
-    <h3>Duration Options</h3>
-    <p class="text-secondary">Define different duration options that attendees can choose from.</p>
-    <div class="p-lg"></div>
+
+    <div class="hide-while-creating-event">
+      <h3>Duration Options</h3>
+      <p class="text-secondary">Define different duration options that attendees can choose from.</p>
+      <div class="p-lg"></div>
+    </div>
+    
     
     <repeater-component 
-      ref="durationRepeater"
       :components="durationComponents"
+      :initialItems="durations"
       label="Duration Option"
       name="durations"
     />
     
-    <div class="p-xl"></div>
-    
-    <div class="actions">
-      <button-component 
-        :label="loading ? 'Saving...' : 'Save Duration Options'" 
-        :loading="loading"
-        @click="saveChanges"
-      />
+    <div class="hide-while-creating-event">
+      <div class="p-xl"></div>
+      
+      <div class="actions">
+        <div class="c-button tertiary pointer i-popup-close" as="stroke">Close</div>
+        <button-component 
+          :label="loading ? 'Saving...' : 'Save Duration Options'" 
+          :loading="loading"
+          @click="saveChanges"
+        />
+      </div>
     </div>
   </div>
 </template>
-
-
-
 
 <style>
 .event-durations {
@@ -202,7 +215,7 @@ async function saveChanges() {
   right:0;
 }
 
-.event-durations .c-repeater > .items > .item > .top .toggle   {
+.event-durations .c-repeater > .items > .item > .top .toggle {
   display: none!important;
 }
 
@@ -217,12 +230,12 @@ async function saveChanges() {
 }
 
 .event-durations .c-repeater {
-  padding:0 ;
+  padding:0;
   border:none;
 }
 
 .event-durations .c-repeater > .items > .item {
-  padding:0 ;
+  padding:0;
   border:none;
 }
 
@@ -233,6 +246,11 @@ async function saveChanges() {
 
 .event-durations .c-builder > .content {
   padding-bottom: 0;
+}
+
+.event-durations .actions {
+  display: flex;
+  gap: 10px;
 }
 
 </style>

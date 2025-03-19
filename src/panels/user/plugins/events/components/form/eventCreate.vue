@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { UserStore } from '@stores/user';
 import { api } from '@utils/api';
 import EditTime from '@user_events/components/form/editTime/editTime.vue';
+import DurationOptions from '@user_events/components/form/eventEditDuration.vue';
 import PopupView from '@layouts/popup/view.vue';
 import Button from '@form/button/view.vue';
 import InputComponent from '@form/input/view.vue';
@@ -12,18 +13,26 @@ import { common } from '@utils/common';
 const userStore = UserStore();
 
 // State variables
+const currentStep = ref(1);
+const totalSteps = 3;
 const eventName = ref('');
-const duration = ref('30');
 const organizationId = ref('');
+const showOrgSelection = ref(true);
 const scheduleData = ref(null);
+const durationData = ref(null);
 const isSubmitting = ref(false);
 
-// Create duration options (15, 30, 45, 60 minutes)
-const durationOptions = [
-    { label: '15 minutes', value: '15' },
-    { label: '30 minutes', value: '30' },
-    { label: '45 minutes', value: '45' },
-    { label: '60 minutes', value: '60' },
+// Reference to duration component
+const durationOptionsRef = ref(null);
+const editTimeRef = ref(null);
+
+// Initialize with the default values
+durationData.value = [
+    {
+        title: 'Standard Meeting',
+        description: '',
+        duration: 30
+    }
 ];
 
 const props = defineProps({
@@ -31,10 +40,22 @@ const props = defineProps({
     endpoint: String,
     type: String,
     callback: Function,
+    preselectedOrganizationId: {
+        type: [String, Number],
+        default: null
+    }
 });
 
 import { toRaw } from 'vue';
 const rawProps = toRaw(props);
+
+// Set preselected organization if provided
+onMounted(() => {
+    if (props.preselectedOrganizationId) {
+        organizationId.value = props.preselectedOrganizationId.toString();
+        showOrgSelection.value = false; // Hide organization selection when preselected
+    }
+});
 
 // Format organizations for select dropdown
 const orgOptions = computed(() => {
@@ -59,19 +80,110 @@ const orgOptions = computed(() => {
     }
 });
 
+// Get organization name for display when preselected
+const selectedOrgName = computed(() => {
+    if (!organizationId.value) return '';
+    
+    const org = orgOptions.value.find(o => o.value === organizationId.value);
+    return org ? org.label : '';
+});
+
+// Step validation
+const canProceedToStep2 = computed(() => {
+    return eventName.value && organizationId.value;
+});
+
+const canProceedToStep3 = computed(() => {
+    // Check if duration data is available
+    return durationData.value && Array.isArray(durationData.value) && durationData.value.length > 0;
+});
+
+const canSubmitForm = computed(() => {
+    return scheduleData.value && scheduleData.value.schedule;
+});
+
+// Helper function to extract duration data from DOM
+function extractDurationDataFromDOM() {
+    const extractedData = [];
+    const durationElements = document.querySelectorAll('.c-repeater .c-builder');
+    
+    durationElements.forEach(builder => {
+        const titleInput = builder.querySelector('input[name="title"]');
+        const durationInput = builder.querySelector('input[name="duration"]');
+        
+        if (titleInput || durationInput) {
+            extractedData.push({
+                title: titleInput ? titleInput.value || 'Standard Meeting' : 'Standard Meeting',
+                description: '',
+                duration: durationInput ? parseInt(durationInput.value) || 30 : 30
+            });
+        }
+    });
+    
+    return extractedData.length > 0 ? extractedData : null;
+}
+
+const nextStep = () => {
+    if (currentStep.value === 1 && !canProceedToStep2.value) {
+        common.notification('Please enter an event name and select an organization', false);
+        return;
+    }
+    
+    if (currentStep.value === 2) {
+        // Get duration data from DOM 
+        const extractedData = extractDurationDataFromDOM();
+        
+        if (extractedData) {
+            durationData.value = extractedData;
+        }
+        
+        if (!durationData.value || !Array.isArray(durationData.value) || durationData.value.length === 0) {
+            common.notification('Please add at least one duration option', false);
+            return;
+        }
+    }
+    
+    if (currentStep.value < totalSteps) {
+        currentStep.value++;
+    }
+};
+
+const prevStep = () => {
+    if (currentStep.value > 1) {
+        currentStep.value--;
+    }
+};
+
 // Method to handle the schedule update from the EditTime component
 const updateSchedule = (data) => {
     console.log('Received schedule data:', data);
     scheduleData.value = data;
 };
 
+// Method to handle durations update from the DurationOptions component
+const updateDurations = (data) => {
+    console.log('Received durations data:', data);
+    if (data && data.duration) {
+        durationData.value = data.duration;
+    }
+};
+
+// Default values for duration component
+function getDurationValues() {
+    return {
+        duration: durationData.value || [
+            {
+                title: 'Standard Meeting',
+                description: '',
+                duration: 30
+            }
+        ]
+    };
+}
+
 // Handle input changes
 const updateEventName = (event, value) => {
     eventName.value = value;
-};
-
-const updateDuration = (value) => {
-    duration.value = value;
 };
 
 const updateOrganization = (value) => {
@@ -80,33 +192,36 @@ const updateOrganization = (value) => {
 
 // Method to handle form submission
 const handleSubmit = async () => {
-    // Validate form
-    if (!eventName.value) {
-        common.notification('Please enter a name for the event type', false);
+    if (!canSubmitForm.value) {
+        common.notification('Please set up an availability schedule', false);
         return;
     }
     
-    if (!duration.value) {
-        common.notification('Please select a duration', false);
-        return;
-    }
-    
-    if (!organizationId.value) {
-        common.notification('Please select an organization', false);
-        return;
-    }
-    
-    if (!scheduleData.value) {
-        common.notification('Please set up a schedule', false);
-        return;
+    // Extract latest duration data before submitting
+    const extractedDurationData = extractDurationDataFromDOM();
+    if (extractedDurationData) {
+        durationData.value = extractedDurationData;
     }
     
     // Prepare data for API submission
     const apiData = {
         name: eventName.value,
-        duration: parseInt(duration.value),
         schedule: {}
     };
+    
+    // Include durations if available
+    if (durationData.value && Array.isArray(durationData.value) && durationData.value.length > 0) {
+        apiData.duration = durationData.value;
+        console.log('Using duration data for submission:', durationData.value);
+    } else {
+        apiData.duration = [
+            {
+                title: 'Standard Meeting',
+                description: '',
+                duration: 30
+            }
+        ];
+    }
     
     // Map schedule data correctly
     if (scheduleData.value && scheduleData.value.schedule) {
@@ -147,64 +262,112 @@ const handleSubmit = async () => {
     <PopupView title="Create Event Type" customClass="h-auto event-times">
         <template #content>
             <div class="form-section">
-                <div class="form-flex">
-                    <!-- Event Name Input -->
-                    <div class="form-row">
-                        <InputComponent
-                            label="Event Type Name"
-                            :value="eventName"
-                            placeholder="e.g., Consultation Call"
-                            required
-                            @onInput="updateEventName"
-                        />
+                <!-- Step indicator -->
+                <div class="steps-indicator">
+                    <div class="step" :class="{ active: currentStep >= 1, completed: currentStep > 1 }">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Basic Info</div>
                     </div>
-                    
-                    <!-- Duration Select -->
-                    <div class="form-row">
-                        <SelectComponent
-                            label="Duration"
-                            :options="durationOptions"
-                            :value="duration"
-                            placeholder="Select duration"
-                            required
-                            @change="updateDuration"
-                        />
+                    <div class="step-line" :class="{ active: currentStep > 1 }"></div>
+                    <div class="step" :class="{ active: currentStep >= 2, completed: currentStep > 2 }">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Duration Options</div>
                     </div>
-                    
-                    <!-- Organization Select -->
-                    <div class="form-row" v-if="!rawProps.endpoint?.includes('organization_id')">
-                        <SelectComponent
-                            label="Organization"
-                            :options="orgOptions"
-                            :value="organizationId"
-                            placeholder="Select organization"
-                            required
-                            @change="updateOrganization"
-                        />
+                    <div class="step-line" :class="{ active: currentStep > 2 }"></div>
+                    <div class="step" :class="{ active: currentStep >= 3 }">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Availability</div>
                     </div>
                 </div>
                 
-                <h3 class="section-title">Availability Schedule</h3>
+                <!-- Step content sections - using CSS display instead of v-if -->
+                <div class="step-container">
+                    <!-- Step 1: Basic Info -->
+                    <div class="step-content" :class="{ 'active-step': currentStep === 1 }">
+                        <div class="form-group">
+                            <InputComponent
+                                label="Event Type Name"
+                                :value="eventName"
+                                placeholder="e.g., Consultation Call"
+                                required
+                                @onInput="updateEventName"
+                            />
+                        </div>
+                        
+                        <!-- Show organization selection only if not preselected -->
+                        <div class="form-group" v-if="showOrgSelection && !rawProps.endpoint?.includes('organization_id')">
+                            <SelectComponent
+                                label="Organization"
+                                :options="orgOptions"
+                                :value="organizationId"
+                                placeholder="Select organization"
+                                required
+                                @change="updateOrganization"
+                            />
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Duration Options -->
+                    <div class="step-content" :class="{ 'active-step': currentStep === 2 }">
+                        <p class="step-description">Define different duration options that attendees can choose from.</p>
+                        
+                        <div class="durations-section">
+                            <DurationOptions
+                                :endpoint="''"
+                                :type="'POST'"
+                                :callback="(e, data) => updateDurations(data)"
+                                :values="getDurationValues"
+                                ref="durationOptionsRef"
+                            />
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Availability Schedule -->
+                    <div class="step-content" :class="{ 'active-step': currentStep === 3 }">
+                        <h3 class="step-title">Availability Schedule</h3>
+                        <p class="step-description">Set your weekly availability for this event type.</p>
+                        
+                        <div class="schedule-section">
+                            <edit-time
+                                @update="updateSchedule"
+                                ref="editTimeRef"
+                            />
+                        </div>
+                    </div>
+                </div>
                 
-                <!-- EditTime Component -->
-                <div class="schedule-section">
-                    <edit-time
-                        @update="updateSchedule"
-                    />
-                </div>
-            </div>
-
-            <div class="actions grid grid-2 gap-2xl" style="margin-top: 50px;">
-                <div>
-                    <div class="c-button tertiary pointer i-popup-close" as="stroke">Close</div>
-                </div>
-                <div>
-                    <Button 
-                        type="button" 
-                        label="Save" 
-                        :loading="isSubmitting" 
-                        @click="handleSubmit"
-                    />
+                <!-- Navigation buttons -->
+                <div class="form-navigation">
+                    <div>
+                        <!-- Back button (for steps 2 and 3) -->
+                        <Button 
+                            v-if="currentStep > 1"
+                            type="button" 
+                            as="tertiary"
+                            label="Back" 
+                            @click="prevStep"
+                        />
+                        <!-- Cancel button (for step 1) -->
+                        <div v-else class="c-button tertiary pointer i-popup-close">Cancel</div>
+                    </div>
+                    
+                    <div>
+                        <!-- Next button (for steps 1 and 2) -->
+                        <Button 
+                            v-if="currentStep < totalSteps"
+                            type="button" 
+                            label="Next" 
+                            @click="nextStep"
+                        />
+                        <!-- Submit button (for step 3) -->
+                        <Button 
+                            v-else
+                            type="button" 
+                            label="Create Event" 
+                            :loading="isSubmitting" 
+                            @click="handleSubmit"
+                        />
+                    </div>
                 </div>
             </div>
         </template>
@@ -212,35 +375,105 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
+
 .form-section {
     margin-bottom: 30px;
 }
-.form-row {
+
+.step-container {
+    position: relative;
+}
+
+.step-content {
+    display: none;
     margin-bottom: 20px;
 }
-.section-title {
-    margin: 10px 0 15px;
-    font-weight: 600;
-    font-size: 16px;
+
+.step-content.active-step {
+    display: block;
 }
+
+.step-title {
+    margin: 20px 0 15px;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.step-description {
+    margin-bottom: 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.preselected-org {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    background-color: var(--background-1);
+}
+
+.field-label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+}
+
+.field-value {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
 .schedule-section {
+    padding-top: 10px;
+}
+
+/* Navigation buttons */
+.form-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
     border-top: 1px solid var(--border);
     padding-top: 20px;
 }
 
-.form-flex {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
+/* Override DurationOptions component styles to fit in this view */
+.durations-section :deep(.hide-while-creating-event) {
+    display: none!important;
 }
 
-.form-flex > div {
-    flex: 1;
+.durations-section :deep(.c-repeater) {
+    background: transparent;
 }
-</style>
+.durations-section :deep(.event-durations .c-repeater > .items > .item form) {
+    background: white;
+    padding: 15px;
+}
 
-<style>
-.form-flex .c-input .text-xs {
-    display: none !important;
+.durations-section :deep(.event-durations) {
+    padding: 0;
+    background: transparent;
+}
+
+.durations-section :deep(.l-popup .c-builder) {
+    width: 100%;
+}
+
+.durations-section :deep(.event-durations .c-repeater) {
+    margin-top: 0;
+}
+
+.durations-section :deep(.event-durations h3),
+.durations-section :deep(.event-durations .actions) {
+    display: none;
+}
+
+.durations-section :deep(.event-durations p) {
+    display: none;
 }
 </style>

@@ -30,7 +30,8 @@
 
 .l-popup .c-builder 
 {
-    width: 580px;
+    width: 100%;
+    max-width: 580px;
     position: relative;
     background-color: transparent;
     border: none;

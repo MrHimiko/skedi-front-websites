@@ -47,6 +47,12 @@
                                 overlay: { position: 'center' },
                                 properties: {
                                     title: 'New event type',
+                                    callback: (event, data, response, success) => {
+                                        if (success) {
+                                            reloadData();
+                                            console.log('Event created', response);
+                                        }
+                                    },
                                 }
                             }
                         "/>

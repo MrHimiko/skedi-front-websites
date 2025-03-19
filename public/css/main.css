@@ -1,6 +1,7 @@
 @import './variables.css';
 @import './classes.css';
 @import './default.css';
+@import './survey-form-steps.css';
 
 @import './classes/animations.css';
 @import './classes/container.css';
