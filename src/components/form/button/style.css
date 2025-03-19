@@ -107,3 +107,8 @@
     width: 16px;
     height: 16px;
 }
+
+
+.c-button.red {
+    background: var(--red-default);
+}

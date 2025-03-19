@@ -12,6 +12,7 @@
 .l-popup.h-auto 
 {
     height: auto;
+    max-height: 80vh;
 }
 
 .l-popup > .top 
@@ -26,4 +27,14 @@
     flex: 1;
     padding: var(--spacing-xl);
     height: calc(100vh - 50px - 51px);
+}
+
+
+
+
+
+.l-popup.event-times
+{
+    width: 100%;
+    max-width: 600px;
 }

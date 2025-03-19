@@ -8,16 +8,25 @@
         callback: Function,
     });
 
-    const tabs = [
+    const tabs = [    
         {
-            name: '',
             components: [
                 {
+                    label: "Name",
                     type: 'Input',
-                    width: 12,
+                    width: 6,
                     name: 'name',
                     properties: {
-                        placeholder: 'dadsa'
+                        placeholder: 'Organization name'
+                    }
+                },
+                {
+                    label: "URL Slug",
+                    type: 'Input',
+                    width: 6,
+                    name: 'slug',
+                    properties: {
+                        placeholder: 'org-name'
                     }
                 }
             ]

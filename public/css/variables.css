@@ -76,7 +76,7 @@
 
     /* warning / error / success */
 
-    --green-default: rgba(76, 175, 80, 1);
+    --green-default: #00c583;
     --green-hover: rgba(76, 175, 80, 0.8);
     --green-active: rgba(76, 175, 80, 0.6);
     --green-stroke: rgba(76, 175, 80, 0.3);
@@ -94,7 +94,7 @@
     --orange-stroke: rgba(255, 87, 34, 0.3);
     --orange-fill: rgba(255, 87, 34, 0.15);
   
-    --red-default: rgba(244, 67, 54, 1);
+    --red-default: rgb(231 0 41);
     --red-hover: rgba(244, 67, 54, 0.8);
     --red-active: rgba(244, 67, 54, 0.6);
     --red-stroke: rgba(244, 67, 54, 0.3);

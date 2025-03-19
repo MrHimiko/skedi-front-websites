@@ -1,19 +1,18 @@
 <script setup>
-    import './style.css'
+import './style.css'
 
-    defineProps(
-    {
-        title: 
-        {
-            type: String,
-            required: true
-        },
-        icon: String
-    })
+defineProps({
+    title: {
+        type: String,
+        required: true
+    },
+    icon: String,
+    customClass: String 
+})
 </script>
 
 <template>
-    <div class="l-popup">
+    <div :class="['l-popup', customClass]">
         <div class="top flex-between gap-xl">
             <div class="flex gap-lg">
                 <i v-if="icon">{{ icon }}</i>

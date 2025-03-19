@@ -1,12 +1,29 @@
 <script setup>
 import ButtonComponent from '@form/button/view.vue';
-import { PhLink, PhUsers, PhCode, PhPlus, PhDotsThree } from "@phosphor-icons/vue";
-import { ref, computed } from 'vue';
+import { PhLink, PhUsers, PhCode, PhPlus, PhDotsThree, PhGearSix } from "@phosphor-icons/vue";
 import TeamList from '@user_teams/components/teamList/view.vue';
+import TeamCreateForm from '@user_teams/components/form/teamCreate.vue';
+import TeamEditForm from '@user_teams/components/form/teamEdit.vue';
+import { api } from '@utils/api';
+import { popup } from '@utils/popup';
+import { UserStore } from '@stores/user';
+import { ref, inject } from 'vue';
+
+import { hasAdminAccess, getUserCount, hasSubteams } from '@user_shared/utils/js/organization-structure.js';
+
+// Create a unique symbol for the reload function
+const RELOAD_KEY = Symbol('reloadTeams');
+
+const userStore = UserStore();
+const refreshKey = ref(0);
 
 const props = defineProps({
     teams: {
         type: Array,
+        required: true
+    },
+    orgId: {
+        type: String,
         required: true
     },
     orgSlug: {
@@ -20,44 +37,39 @@ const props = defineProps({
     currentUserId: {
         type: Number,
         required: true
+    },
+    reloadData: {
+        type: Function,
+        default: null
     }
 });
 
-// For debugging - log the teams passed to this component
-console.log('TeamList received teams:', props.teams);
+// Try to inject the reload function from a parent component
+const injectedReload = inject(RELOAD_KEY, null);
 
-// Determine if the current user has admin privileges for a specific team
-function hasAdminAccess(team) {
-    if (!team) return false;
+// Create a function to call the appropriate reload method
+function triggerReload() {
+    // Increment the refresh key to force this component to re-render
+    refreshKey.value++;
     
-    // Check team's effective_role or role property directly
-    return team.effective_role === 'admin' || 
-           team.effective_role === 'team_admin' || 
-           team.role === 'admin' || 
-           team.role === 'team_admin';
+    // First try to use the prop-based reload function
+    if (props.reloadData) {
+        props.reloadData();
+    } 
+    // If no prop-based reload, try to use the injected one
+    else if (injectedReload) {
+        injectedReload();
+    }
 }
 
-// Create URL for the team
 function getTeamUrl(team) {
     if (!team || !team.slug) return '#';
     return `https://skedi.com/${props.orgSlug}/${team.slug}`;
 }
-
-// Get user count for a team - safely handle potential undefined values
-function getUserCount(team) {
-    if (!team) return 0;
-    if (!team.users) return 0;
-    return team.users.length;
-}
-
-// Check if a team has subteams
-function hasSubteams(team) {
-    return team && team.teams && Array.isArray(team.teams) && team.teams.length > 0;
-}
 </script>
 
 <template>
-    <ul class="teams-list">
+    <ul class="teams-list" :key="refreshKey">
         <li v-for="team in teams" :key="team.id" class="team-item">
             <div class="team">
                 <div class="top">
@@ -100,10 +112,46 @@ function hasSubteams(team) {
                                 as="secondary icon"
                                 :iconLeft="{ component: PhCode, weight: 'bold' }"
                             />
+
+                            <button-component v-tooltip="{ content: 'Settings' }" as="secondary icon"
+                                :iconLeft="{ component: PhGearSix, weight: 'bold' }" 
+                                v-popup="{
+                                    component: TeamEditForm,
+                                    overlay: { position: 'center' },
+                                    properties: {
+                                        endpoint: `organizations/${orgId}/teams/${team.id}`,
+                                        type: 'PUT',
+                                        callback: (event, data, response, success) => {
+                                            console.log(response);
+                                            popup.close();
+                                            triggerReload();
+                                        },
+                                        class: 'h-auto',
+                                        title: `Edit ${team.name}`,
+                                        values: () => {return {name: team.name, slug: team.slug, color:team.color} }
+                                    }
+                                }"
+                            />
+
                             <ButtonComponent v-if="hasAdminAccess(team)"
                                 v-tooltip="{ content: 'Create subteam' }"
                                 as="secondary icon"
                                 :iconLeft="{ component: PhPlus, weight: 'bold' }"
+                                v-popup="{
+                                    component: TeamCreateForm,
+                                    overlay: { position: 'center' },
+                                    properties: {
+                                        endpoint: `organizations/${orgId}/teams?parent_team_id=${team.id}`,
+                                        type: 'POST',
+                                        callback: (event, data, response, success) => {
+                                            console.log(response);
+                                            popup.close();
+                                            triggerReload();
+                                        },
+                                        class: 'h-auto',
+                                        title: `Create new subteam of ${team.name}`,
+                                    }
+                                }"
                             />
                             <ButtonComponent v-if="hasAdminAccess(team)"
                                 as="secondary icon"
@@ -114,19 +162,15 @@ function hasSubteams(team) {
                 </div>
             </div>
 
-            <!-- Recursive rendering of subteams with debugging -->
+            <!-- Recursive rendering of subteams -->
             <div v-if="hasSubteams(team)" class="subteam-wrapper">
-                <!-- Debug info -->
-                <div class="debug-info" style="font-size: 10px; color: #999; margin: 5px 0;">
-                    Sub-teams for {{ team.name }}: {{ team.teams.length }}
-                </div>
-                
-                <!-- Use the component itself for recursion -->
                 <TeamList
                     :teams="team.teams"
                     :orgSlug="orgSlug"
                     :orgUsers="orgUsers"
+                    :orgId="orgId"
                     :currentUserId="currentUserId"
+                    :reloadData="triggerReload"
                 />
             </div>
         </li>
@@ -139,95 +183,5 @@ function hasSubteams(team) {
     padding-left: 1em;
     margin-top: 0.5em;
     margin-bottom: 0.5em;
-}
-
-.team-item {
-    margin-bottom: 1em;
-    border-left: 1px solid #eaeaea;
-    padding-left: 1em;
-}
-
-.team {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 1em;
-    margin-bottom: 0.5em;
-    border: 1px solid #eaeaea;
-}
-
-.top {
-    margin-bottom: 1em;
-}
-
-.top h2 {
-    font-size: 1.2em;
-    margin: 0 0 0.5em 0;
-    font-weight: 600;
-}
-
-.team-url {
-    display: block;
-    font-size: 0.9em;
-    color: #2563eb;
-    text-decoration: none;
-    margin-bottom: 0.5em;
-}
-
-.info {
-    display: flex;
-    margin-bottom: 0.5em;
-}
-
-.info .item {
-    display: flex;
-    align-items: center;
-    margin-right: 1em;
-}
-
-.info .icon {
-    margin-right: 0.25em;
-}
-
-.list-of-users {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5em;
-    margin-top: 0.5em;
-}
-
-.user-item {
-    background-color: #edf2f7;
-    padding: 0.25em 0.5em;
-    border-radius: 4px;
-    font-size: 0.85em;
-}
-
-.role-admin {
-    background-color: #e6f7ff;
-    border: 1px solid #91d5ff;
-}
-
-.role-team_admin {
-    background-color: #f6ffed;
-    border: 1px solid #b7eb8f;
-}
-
-.bottom {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.actions {
-    display: flex;
-    gap: 0.5em;
-}
-
-.subteam-wrapper {
-    margin-left: 1em;
-}
-
-/* Debug styles - can be removed in production */
-.debug-info {
-    display: none; /* Set to 'block' to show debug info */
 }
 </style>

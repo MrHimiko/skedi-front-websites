@@ -1,0 +1,29 @@
+.c-select input[value] {
+    display: none;
+}
+
+.c-select input {
+    pointer-events: none;
+}
+
+.c-select .display {
+    font-size: 13px;
+    padding: 0 var(--spacing-lg);
+}
+
+.c-select {
+    cursor: pointer;
+    position: relative;
+}
+
+.c-select > svg {
+    position: absolute;
+    bottom: 13px;
+    right: 5px;
+    height: 10px;
+    pointer-events: none;
+}
+
+.c-select .c-input > .holder {
+    padding-right: 15px;
+}

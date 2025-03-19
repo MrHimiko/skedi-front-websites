@@ -14,7 +14,7 @@
                     <i>{{ notification.icon }}</i>
                 </div>
                 <div class="right">
-                    <b>{{ notification.title }}</b>
+                    <span> {{ notification.title }} </span>
                     <p class="text-xs text-secondary">{{ notification.description }}</p>
                 </div>
             </div>

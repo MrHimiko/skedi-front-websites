@@ -20,6 +20,8 @@ export default defineConfig({
             '@logic': path.resolve(__dirname, './src/other/logic'),
             '@stores': path.resolve(__dirname, './src/other/stores'),
 
+            '@user_shared': path.resolve(__dirname, './src/panels/user/plugins/_shared'),
+            '@user_events': path.resolve(__dirname, './src/panels/user/plugins/events'),
             '@user_activity': path.resolve(__dirname, './src/panels/user/plugins/activity'),
             '@user_account': path.resolve(__dirname, './src/panels/user/plugins/account'),
             '@user_dashboard': path.resolve(__dirname, './src/panels/user/plugins/dashboard'),

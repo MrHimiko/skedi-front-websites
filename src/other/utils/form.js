@@ -186,10 +186,6 @@ export const form =
             {
                 callback(event, data, response, true)
             }
-
-
-            popup.closeOnTarget(event.target)
-            dropdown.closeOnTarget(event.target)
         })
         .catch((response) =>
         {

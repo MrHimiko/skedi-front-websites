@@ -1,127 +1,52 @@
 <script setup>
+import '@user_shared/utils/styles/organization-dropdowns.css';
+import { mergeOrganizationsAndTeams } from '@user_shared/utils/js/organization-structure.js';
+
 import './style.css';
-import { ref, onMounted, toRaw, computed } from 'vue';
-import { fetch } from '@utils/fetch';
-import { api } from '@utils/api';
-import { PhGearSix, PhPlus, PhCode, PhLink, PhUsers, PhDotsThree } from "@phosphor-icons/vue";
+import { ref, onMounted, toRaw, provide } from 'vue';
+import { PhGearSix, PhPlus, PhCode, PhLink, PhUsers } from "@phosphor-icons/vue";
 import ButtonComponent from '@form/button/view.vue';
-import BuilderPopupComponent from '@/components/builder/popup/view.vue';
+
 import TeamList from '@user_teams/components/teamList/view.vue';
 import { UserStore } from '@stores/user';
+
+import TeamCreateForm from '@user_teams/components/form/teamCreate.vue';
+import OrganizationEditForm from '@user_teams/components/form/organizationEdit.vue';
+import { popup } from '@utils/popup';
+import { api } from '@utils/api';
+
+// Create a unique symbol for the reload function
+const RELOAD_KEY = Symbol('reloadTeams');
 
 const userStore = UserStore();
 const currentUserId = userStore.getId();
 const organizations = ref([]);
+const eventsItems = ref(0); 
 
-// Create team tree structure
-function createTeamTree(teams, parentId = null) {
-  return teams
-    .filter(team => {
-      // Safe access for proxy objects with null checks
-      if (!team || !team.entity) return false;
-      
-      // Handle the case where parent_team_id might be undefined or null
-      if (parentId === null) {
-        return !team.entity.parent_team_id; // Top level teams have no parent
-      }
-      
-      return team.entity.parent_team_id === parentId;
-    })
-    .map(team => {
-      // Safely access team data with null checks
-      const teamData = team.entity || {};
-      
-      // Create the team structure with nested teams array instead of children
-      return {
-        // Copy all properties from the team entity
-        ...teamData,
-        role: team.role || 'member',
-        effective_role: team.role || 'member',
-        // Rename the 'children' concept to 'teams' as per the requested structure
-        teams: createTeamTree(teams, teamData.id)
-      };
-    });
-}
-
-// Merge organizations and teams into a hierarchical structure
-function mergeOrganizationsAndTeams() {
-  // Get the data and unwrap proxies with toRaw
-  const teams = toRaw(userStore.getTeams() || []);
-  const orgs = toRaw(userStore.getOrganizations() || []);
-  
-  console.log("Teams from store (unwrapped):", teams);
-  console.log("Organizations from store (unwrapped):", orgs);
-  
-  // Create organizations with nested team structure
-  const enhancedOrgs = orgs.map(org => {
-    // Make sure to use safe access with optional chaining for proxy objects
-    const orgId = org.entity?.id;
-    console.log("Processing organization ID:", orgId);
-    
-    // Find all teams for this organization, and handle possible proxy objects
-    const orgTeams = teams.filter(team => {
-      // Safe access with null checks for proxy objects
-      if (!team || !team.entity || !team.entity.organization_id) return false;
-      return team.entity.organization_id === orgId;
-    });
-    
-    console.log(`Teams for org ${orgId}:`, orgTeams);
-    
-    // Create the team tree for this organization (only top-level teams)
-    const topLevelTeams = createTeamTree(orgTeams, null);
-    
-    // Return organization with all its data and the nested teams structure
-    return {
-      // Include all properties from org.entity with safe access
-      ...(org.entity || {}),
-      // Override/add specific properties as needed
-      id: orgId,
-      name: org.entity?.name || 'Unnamed Organization',
-      slug: org.entity?.slug || 'unnamed-org',
-      users: org.entity?.users || [],
-      // Use the teams array with nested structure as requested
-      teams: topLevelTeams
-    };
-  });
-  
-  return enhancedOrgs;
-}
-
-function createTeam(organizationId) {
-  // Implement team creation logic
-  console.log("Creating new team for organization:", organizationId);
-  // You would typically open a form/modal here or navigate to a team creation page
-}
-
-// Debug function to log and unwrap proxies
-function logObject(label, obj) {
+async function reloadData() {
   try {
-    const unwrapped = toRaw(obj);
-    console.log(label, JSON.parse(JSON.stringify(unwrapped)));
-  } catch (e) {
-    console.log(`Error logging ${label}:`, e);
-    console.log(`Original ${label}:`, obj);
+    const response = await api.get('account/user');
+    if (response.success && response.data) {
+      userStore.setData(response.data);
+      organizations.value = mergeOrganizationsAndTeams();
+      eventsItems.value++;
+    }
+  } catch (error) {
+    console.error("Failed to reload user data:", error);
   }
 }
 
+// Provide the reload function to all descendant components
+provide(RELOAD_KEY, reloadData);
+
 onMounted(() => {
-  // Log the raw data from the store for debugging
   const rawTeams = toRaw(userStore.getTeams());
   const rawOrgs = toRaw(userStore.getOrganizations());
   
-  logObject("Raw teams from store", rawTeams);
-  logObject("Raw organizations from store", rawOrgs);
-  
-  // Process the data from the store into our hierarchical structure
   organizations.value = mergeOrganizationsAndTeams();
-  logObject("Merged organizations with team trees", organizations.value);
   
-  // If organizations are empty but we have data in the store, try to debug
   if (organizations.value.length === 0) {
     if ((rawTeams && rawTeams.length) || (rawOrgs && rawOrgs.length)) {
-      console.log("No organizations processed but store has data.");
-      
-      // Try a direct approach if the regular method fails
       if (rawOrgs && rawOrgs.length) {
         organizations.value = rawOrgs.map(org => {
           const entity = org.entity || {};
@@ -130,12 +55,9 @@ onMounted(() => {
             id: entity.id,
             name: entity.name || 'Unknown',
             slug: entity.slug || 'unknown',
-            teams: []  // Initialize empty teams array
+            teams: [] 
           };
         });
-        
-        // Log the attempt
-        logObject("Direct organization mapping result", organizations.value);
       }
     }
   }
@@ -143,7 +65,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="teams-c-items">
+    <div class="teams-c-items" :key="eventsItems">
         <div v-for="org in organizations" :key="org.id" class="teams-c-item">
             <div class="head">
                 <div class="left">
@@ -168,11 +90,45 @@ onMounted(() => {
                             :iconLeft="{ component: PhLink, weight: 'bold' }" />
                         <button-component v-tooltip="{ content: 'Embed on a website' }" as="tertiary icon"
                             :iconLeft="{ component: PhCode, weight: 'bold' }" />
-                        <button-component v-if="org.users.some(user => user.id === currentUserId && user.effective_role === 'admin')" v-tooltip="{ content: 'Settings' }" as="tertiary icon"
+                        <button-component 
+                            v-popup="{
+                                component: OrganizationEditForm,
+                                overlay: { position: 'center' },
+                                properties: {
+                                    endpoint: `organizations/${org.id}`,
+                                    type: 'PUT',
+                                    callback: (event, data, response, success) =>
+                                    {
+                                        popup.close();
+                                        reloadData();
+                                        console.log('org edited', response);
+                                    },
+                                    class: 'h-auto',
+                                    title: `Edit ${org.name}`,
+                                    values: () => {return {name: org.name, slug: org.slug} }
+                                }
+                            }"
+                            v-tooltip="{ content: 'Settings' }" as="tertiary icon"
                             :iconLeft="{ component: PhGearSix, weight: 'bold' }" />
 
-                        <div v-if="org.users.some(user => user.id === currentUserId && user.effective_role === 'admin')">
-                            <div v-popup="{ component: BuilderPopupComponent, overlay: { position: 'center center' }, properties: { title: 'Create new team', class: 'h-auto' } }">
+                        <div>
+                            <div v-popup="{
+                                    component: TeamCreateForm,
+                                    overlay: { position: 'center' },
+                                    properties: {
+                                        endpoint: `organizations/${org.id}/teams`,
+                                        type: 'POST',
+                                        callback: (event, data, response, success) =>
+                                        {
+                                            popup.close();
+                                            reloadData();
+                                            console.log(response);
+                                        },
+                                        class: 'h-auto',
+                                        title: `Create new team in ${org.name}`,
+                                       
+                                    }
+                                }">
                                 <button-component v-tooltip="{ content: 'Create new team' }" as="tertiary icon"
                                     :iconLeft="{ component: PhPlus, weight: 'bold' }" @click="createTeam(org.id)" />
                             </div>
@@ -200,31 +156,11 @@ onMounted(() => {
                 v-if="org.teams && org.teams.length"
                 :teams="org.teams"
                 :orgSlug="org.slug"
+                :orgId="org.id"
                 :orgUsers="org.users"
                 :currentUserId="currentUserId"
+                :reloadData="reloadData"
             />
         </div>
     </div>
 </template>
-
-<style scoped>
-.org-users {
-    margin-top: 10px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    background: white;
-    border: 1px solid var(--brand-blue);
-}
-
-.org-users ul {
-    list-style: none;
-    padding: 0;
-    margin: 5px 0 0;
-}
-
-.org-users li {
-    font-size: 14px;
-    margin: 2px 0;
-}
-</style>

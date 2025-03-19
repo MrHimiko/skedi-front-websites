@@ -1,11 +1,11 @@
 .c-toggle > .holder 
 {
     display: inline-block;
-    width: 52px;
-    height: 26px;
+    width: 36px;
+    height: 20px;
     position: relative;
     cursor: pointer;
-    background-color: var(--background-0);
+    background-color: var(--background-2);
     border-radius: var(--radius-2xl);
 }
 
@@ -48,19 +48,23 @@
     position: absolute;
     right: 0;
     bottom: 0;
-    background-color: var(--background-3);
+    background-color: var(--white);
     border-radius: 50px;
     transition: 0.3s;
-    height: 20px;
-    width: 20px;
-    left: 4px;
-    top: 3px;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    top: 2px;
+}
+
+.c-toggle > .holder:has(input:checked) {
+    background: var(--black);
 }
 
 .c-toggle > .holder > input:checked + div > .slider 
 {
-    background-color: var(--green-default);
-    transform: translateX(23px);
+    background-color: var(--white);
+    transform: translateX(16px);
 }
 
 .c-toggle .icon-on 
