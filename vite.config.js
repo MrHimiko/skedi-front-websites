@@ -53,7 +53,7 @@ export default defineConfig({
     },
     server: {
         hmr: true,
-        allowedHosts: ['app.skedi.com']
+        allowedHosts: ['app.skedi.com', 'front.skedi.com']
     },
     preview: {
         port: 5173,
