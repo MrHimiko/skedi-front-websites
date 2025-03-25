@@ -1,15 +1,17 @@
 import { initializeApp } from '@/app'
 import { runHooks } from '@/hooks'
 
-import RunUser from '@/panels/front/run';
+import RunFront from '@/panels/front/run';
 
-
+/* User Plugins */
+import RunFrontEvents from '@front_events/run';
 
 
 initializeApp((app, router, stores) => 
 {   
     const hooks = [
-        RunUser, 
+        RunFront, 
+        RunFrontEvents,
     ];
 
 

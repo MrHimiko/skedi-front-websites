@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig({
+
+    base: '/front/',
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
@@ -27,8 +29,11 @@ export default defineConfig({
             '@user_dashboard': path.resolve(__dirname, './src/panels/user/plugins/dashboard'),
             '@user_teams': path.resolve(__dirname, './src/panels/user/plugins/teams'),
 
-
             '@user_builder': path.resolve(__dirname, './src/panels/user/extensions/builder'),
+
+
+            '@front_events': path.resolve(__dirname, './src/panels/front/plugins/events'),
+            
 
             '@activity': path.resolve(__dirname, './src/plugins/activity'),
             '@account': path.resolve(__dirname, './src/plugins/account'),
