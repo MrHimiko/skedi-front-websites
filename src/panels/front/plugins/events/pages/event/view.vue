@@ -9,6 +9,8 @@ import CalendarView from './components/CalendarView.vue';
 import TimeSlots from './components/TimeSlots.vue';
 import BookingForm from './components/BookingForm.vue';
 import ConfirmationView from './components/ConfirmationView.vue';
+import bookingDataService from './js/booking-data-service';
+
 
 const route = useRoute();
 const organizationSlug = route.params.organizationSlug;
@@ -57,29 +59,50 @@ const handleDurationChanged = (duration) => {
   }
 };
 
+
+
 // Handle form submission
-const handleFormSubmit = (formData) => {
+const handleFormSubmit = async (formData) => {
   bookingData.value = formData;
   
-  // Here you would typically call your API to save the booking
-  // For now, just transition to confirmation view
-  viewState.value = 'CONFIRMATION';
+  // Show loading state
+  loading.value = true;
+  error.value = null;
   
-  // In the future, you would do something like:
-  /*
-  api.post('bookings', {
-    organizationId: organization.value.id,
-    eventId: event.value.id,
-    date: selectedDate.value.toISOString().split('T')[0],
-    time: selectedTime.value,
-    duration: selectedDuration.value,
-    ...formData
-  }).then(() => {
-    viewState.value = 'CONFIRMATION';
-  }).catch(err => {
-    error.value = err.message;
-  });
-  */
+  try {
+    // Call our API to save the booking
+    const response = await bookingDataService.createBooking(
+      formData,
+      event.value.id,
+      organization.value.id
+    );
+    
+    if (response.success) {
+      // Store booking response data if needed
+      console.log('Booking created successfully:', response.data);
+      
+      // Transition to confirmation view
+      viewState.value = 'CONFIRMATION';
+    } else {
+      // Handle API error with more details
+      console.error('API Error:', response);
+      if (typeof response.message === 'object') {
+        // Handle structured error messages
+        const errorMessages = [];
+        for (const key in response.message) {
+          errorMessages.push(`${key}: ${response.message[key]}`);
+        }
+        error.value = errorMessages.join('\n');
+      } else {
+        error.value = response.message || 'Failed to create booking. Please try again.';
+      }
+    }
+  } catch (err) {
+    console.error('Error creating booking:', err);
+    error.value = err.message || 'An unexpected error occurred. Please try again.';
+  } finally {
+    loading.value = false;
+  }
 };
 
 // Go back to calendar view

@@ -55,9 +55,10 @@ function addItem()
     return items.value.length - 1; // Return the index of the new item
 }
 
-function removeItem(index: number) 
-{
-    items.value.splice(index, 1);
+function removeItem(index: number) {
+  items.value.splice(index, 1);
+  toggled.value = toggled.value.filter(i => i !== index);
+  toggled.value = toggled.value.map(i => i > index ? i - 1 : i);
 }
 
 function toggle(index: number) 

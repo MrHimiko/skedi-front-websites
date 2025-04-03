@@ -35,6 +35,7 @@ if (props.event && props.event.duration && props.event.duration.length > 0) {
 
 // Compute available time slots for selected date
 const availableTimesForSelectedDate = computed(() => {
+  
   if (!props.selectedDate || !props.availableSlots) return [];
   
   const dateStr = props.selectedDate.toISOString().split('T')[0];

@@ -64,8 +64,9 @@ const formattedTime = computed(() => {
   return `${formattedStart} - ${formattedEnd}`;
 });
 
+
 // Handle submit button click
-function handleSubmit() {
+async function handleSubmit() {
   // Basic validation
   if (!formData.value.name.trim()) {
     alert('Please enter your name');
@@ -84,8 +85,16 @@ function handleSubmit() {
     return;
   }
   
+  // Prepare data for submission
+  const bookingData = {
+    ...formData.value,
+    selectedDate: props.selectedDate,
+    selectedTime: props.selectedTime,
+    duration: props.duration
+  };
+  
   // Emit submit event with form data
-  emit('submit', formData.value);
+  emit('submit', bookingData);
 }
 
 // Handle back button click
