@@ -23,6 +23,10 @@ const props = defineProps({
     type: Number,
     required: true
   },
+  timezone: {
+    type: String,
+    default: ''
+  },
   bookingData: {
     type: Object,
     required: true
@@ -64,7 +68,7 @@ const formattedTime = computed(() => {
 
 // Format timezone
 const formattedTimezone = computed(() => {
-  return props.event.timezone || 'Central European Standard Time';
+  return props.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 });
 
 // Current date in ISO format for the <time> element
@@ -103,17 +107,20 @@ function downloadICS() {
 
 // Helper functions to generate calendar links (placeholder implementations)
 function generateGoogleCalendarUrl() {
-  // This is a simplified implementation - would need proper URL encoding in production
-  const startDate = props.selectedDate.toISOString().replace(/-|:|\.\d+/g, '');
+  // Convert local time to UTC for Google Calendar
+  const [startHour, startMinute] = props.selectedTime.split(':').map(Number);
+  const dateObj = new Date(props.selectedDate);
+  dateObj.setHours(startHour, startMinute, 0, 0);
+  
+  // Format as ISO string for Google Calendar
+  const startDate = dateObj.toISOString().replace(/-|:|\.\d+/g, '');
   
   // Calculate end time
-  const [startHour, startMinute] = props.selectedTime.split(':').map(Number);
-  const endDate = new Date(props.selectedDate);
-  endDate.setHours(startHour);
-  endDate.setMinutes(startMinute + props.duration);
+  const endDate = new Date(dateObj);
+  endDate.setMinutes(endDate.getMinutes() + props.duration);
   const endDateStr = endDate.toISOString().replace(/-|:|\.\d+/g, '');
   
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(props.event.name)}&dates=${startDate}/${endDateStr}&details=${encodeURIComponent('Meeting scheduled via Skedi')}`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(props.event.name)}&dates=${startDate}/${endDateStr}&details=${encodeURIComponent('Meeting scheduled via Skedi')}&ctz=${encodeURIComponent(props.timezone)}`;
 }
 
 function generateOutlookCalendarUrl() {

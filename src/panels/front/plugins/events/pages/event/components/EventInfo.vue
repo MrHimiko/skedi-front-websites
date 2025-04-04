@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
   event: {
@@ -21,6 +21,10 @@ const props = defineProps({
   duration: {
     type: Number,
     default: 30
+  },
+  timezone: {
+    type: String,
+    default: ''
   }
 });
 
@@ -83,6 +87,11 @@ const formattedTime = computed(() => {
   
   return `${formattedStart} - ${formattedEnd}`;
 });
+
+// Display the current timezone
+const displayTimezone = computed(() => {
+  return props.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+});
 </script>
 
 <template>
@@ -119,11 +128,11 @@ const formattedTime = computed(() => {
     </div>
     
     <!-- Time zone -->
-    <div class="event-detail" v-if="event.timezone">
+    <div class="event-detail">
       <div class="detail-icon">
         <i class="material-icons-outlined">public</i>
       </div>
-      <span>{{ event.timezone }}</span>
+      <span>{{ displayTimezone }}</span>
     </div>
     
     <!-- Selected date and time (if any) -->

@@ -24,6 +24,10 @@ const props = defineProps({
   duration: {
     type: Number,
     default: 30
+  },
+  timezone: {
+    type: String,
+    default: ''
   }
 });
 
@@ -34,7 +38,8 @@ const formData = ref({
   name: '',
   email: '',
   notes: '',
-  guests: []
+  guests: [],
+  timezone: props.timezone
 });
 
 // Format date to display (e.g. "Friday, March 21, 2025")
@@ -64,6 +69,10 @@ const formattedTime = computed(() => {
   return `${formattedStart} - ${formattedEnd}`;
 });
 
+// Display the timezone
+const displayTimezone = computed(() => {
+  return props.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+});
 
 // Handle submit button click
 async function handleSubmit() {
@@ -90,7 +99,8 @@ async function handleSubmit() {
     ...formData.value,
     selectedDate: props.selectedDate,
     selectedTime: props.selectedTime,
-    duration: props.duration
+    duration: props.duration,
+    timezone: props.timezone
   };
   
   // Emit submit event with form data
@@ -137,6 +147,10 @@ function updateNotes(value) {
           <div class="booking-time">
             <i class="material-icons-outlined">schedule</i>
             <span>{{ formattedTime }}</span>
+          </div>
+          <div class="booking-timezone">
+            <i class="material-icons-outlined">public</i>
+            <span>{{ displayTimezone }}</span>
           </div>
         </div>
         
@@ -264,7 +278,7 @@ function updateNotes(value) {
   margin-top: 12px;
 }
 
-.booking-date, .booking-time, .booking-location {
+.booking-date, .booking-time, .booking-timezone, .booking-location {
   display: flex;
   align-items: center;
   gap: 12px;

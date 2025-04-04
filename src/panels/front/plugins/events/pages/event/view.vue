@@ -28,13 +28,15 @@ const availableSlots = ref(null);
 const selectedDate = ref(null);
 const selectedTime = ref(null);
 const selectedDuration = ref(30);
+const selectedTimezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 // Booking data
 const bookingData = ref({
   name: '',
   email: '',
   notes: '',
-  guests: []
+  guests: [],
+  timezone: selectedTimezone.value
 });
 
 // Handle date selection
@@ -59,10 +61,21 @@ const handleDurationChanged = (duration) => {
   }
 };
 
-
+// Handle timezone change
+const handleTimezoneChanged = (timezone) => {
+  selectedTimezone.value = timezone;
+  bookingData.value.timezone = timezone;
+  
+  // If a date is already selected, reload slots with new timezone
+  if (selectedDate.value) {
+    fetchAvailableSlotsForDate(selectedDate.value);
+  }
+};
 
 // Handle form submission
 const handleFormSubmit = async (formData) => {
+  // Add timezone to the form data
+  formData.timezone = selectedTimezone.value;
   bookingData.value = formData;
   
   // Show loading state
@@ -139,11 +152,15 @@ const fetchAvailableSlotsForDate = async (date) => {
     // Get the duration value
     let durationValue = selectedDuration.value || 30;
     
-    console.log(`Fetching slots for date: ${formattedDate}, duration: ${durationValue}`);
-    
+    console.log(`Fetching slots for date: ${formattedDate}, duration: ${durationValue}, timezone: ${selectedTimezone.value}`);
+
     // Get available slots for the specific date
-    const slotsResponse = await api.get(
-      `public/organizations/${organizationSlug}/events/${eventSlug}/available-slots?date=${formattedDate}&duration=${durationValue}`
+    const slotsResponse = await bookingDataService.getAvailableSlots(
+      eventSlug, 
+      organizationSlug, 
+      date, 
+      durationValue, 
+      selectedTimezone.value
     );
     
     if (!slotsResponse.success) {
@@ -259,6 +276,7 @@ fetchEventData();
             :selectedDate="selectedDate"
             :selectedTime="selectedTime"
             :duration="selectedDuration"
+            :timezone="selectedTimezone"
           />
         </div>
         
@@ -280,6 +298,7 @@ fetchEventData();
             :event="event"
             @timeSelected="handleTimeSelected"
             @durationChanged="handleDurationChanged"
+            @timezoneChanged="handleTimezoneChanged"
           />
         </div>
       </div>
@@ -292,6 +311,7 @@ fetchEventData();
           :selectedDate="selectedDate"
           :selectedTime="selectedTime"
           :duration="selectedDuration"
+          :timezone="selectedTimezone"
           @submit="handleFormSubmit"
           @back="handleBackToCalendar"
         />
@@ -305,6 +325,7 @@ fetchEventData();
           :selectedDate="selectedDate"
           :selectedTime="selectedTime"
           :duration="selectedDuration"
+          :timezone="selectedTimezone"
           :bookingData="bookingData"
         />
       </div>

@@ -7,12 +7,14 @@ export default {
   },
 
   formatBookingData(bookingData) {
-    const { name, email, notes, guests, selectedDate, selectedTime, duration } = bookingData;
-    const startTime = this.createDateTimeString(selectedDate, selectedTime);
-    const endTime = this.calculateEndTime(selectedDate, selectedTime, duration);
-
-    console.log("WOOO", startTime);
-    console.log("WOOO2", endTime);
+    const { name, email, notes, guests, selectedDate, selectedTime, duration, timezone } = bookingData;
+    
+    // Convert local time to UTC for API
+    const startTime = this.createDateTimeStringInUTC(selectedDate, selectedTime, timezone);
+    const endTime = this.calculateEndTimeInUTC(selectedDate, selectedTime, duration, timezone);
+    
+    console.log("Start time (UTC):", startTime);
+    console.log("End time (UTC):", endTime);
     
     // Create base booking data structure
     const formData = {
@@ -27,6 +29,7 @@ export default {
         },
         notes: notes || '',
         duration: duration,
+        timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // Include timezone info
         custom_fields: {} // Reserved for future form builder fields
       })
     };
@@ -55,27 +58,97 @@ export default {
       });
     }
 
-
     return formData;
   },
 
-  createDateTimeString(date, timeString) {
+  createDateTimeStringInUTC(date, timeString, timezone = null) {
+    // Parse the time components
     const [hours, minutes] = timeString.split(':').map(Number);
+    
+    // Create a date object with the selected date and time
     const dateObj = new Date(date);
     dateObj.setHours(hours, minutes, 0, 0);
+    
+    // If a timezone is specified, convert to UTC
+    if (timezone) {
+      // Create a formatted date string in ISO format
+      const localDateISO = dateObj.toLocaleString('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      // Parse the localized date string into a Date object
+      const [datePart, timePart] = localDateISO.split(', ');
+      const [month, day, year] = datePart.split('/').map(Number);
+      const [hour, minute, second] = timePart.split(':').map(Number);
+      
+      // Create a UTC date
+      const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+      
+      // Format as MySQL datetime string (YYYY-MM-DD HH:MM:SS)
+      return utcDate.toISOString().replace('T', ' ').substring(0, 19);
+    }
+    
+    // If no timezone specified, use the dateObj directly
     return dateObj.toISOString().replace('T', ' ').substring(0, 19);
   },
 
-  calculateEndTime(date, timeString, durationMinutes) {
+  calculateEndTimeInUTC(date, timeString, durationMinutes, timezone = null) {
+    // Parse the time components
     const [hours, minutes] = timeString.split(':').map(Number);
+    
+    // Create a date object with the selected date and time
     const dateObj = new Date(date);
     dateObj.setHours(hours, minutes, 0, 0);
+    
+    // Add duration
     dateObj.setMinutes(dateObj.getMinutes() + durationMinutes);
+    
+    // If a timezone is specified, convert to UTC
+    if (timezone) {
+      // Create a formatted date string in ISO format
+      const localDateISO = dateObj.toLocaleString('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      // Parse the localized date string into a Date object
+      const [datePart, timePart] = localDateISO.split(', ');
+      const [month, day, year] = datePart.split('/').map(Number);
+      const [hour, minute, second] = timePart.split(':').map(Number);
+      
+      // Create a UTC date
+      const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+      
+      // Format as MySQL datetime string (YYYY-MM-DD HH:MM:SS)
+      return utcDate.toISOString().replace('T', ' ').substring(0, 19);
+    }
+    
+    // If no timezone specified, use the dateObj directly
     return dateObj.toISOString().replace('T', ' ').substring(0, 19);
   },
 
-  getAvailableSlots(eventSlug, orgSlug, date, duration) {
+  getAvailableSlots(eventSlug, orgSlug, date, duration, timezone = null) {
     const formattedDate = date.toISOString().split('T')[0];
-    return api.get(`public/organizations/${orgSlug}/events/${eventSlug}/available-slots?date=${formattedDate}&duration=${duration}`);
+    let url = `public/organizations/${orgSlug}/events/${eventSlug}/available-slots?date=${formattedDate}&duration=${duration}`;
+    
+    // Add timezone parameter if provided
+    if (timezone) {
+      url += `&timezone=${encodeURIComponent(timezone)}`;
+    }
+    
+    return api.get(url);
   }
 };
