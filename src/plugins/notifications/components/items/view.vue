@@ -3,9 +3,6 @@
     import { getLogDates } from './logic'
     import { fetch } from '@utils/fetch'
 
-    import SeparatorComponent from '@global/separator/view.vue'
-    import LogComponent from '@activity/components/log/view.vue'
-
     const props = defineProps({
         endpoint: {
             type: String,

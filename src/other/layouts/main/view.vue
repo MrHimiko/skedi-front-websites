@@ -1,8 +1,6 @@
 <script setup>
     import './style.css'
 
-    import SidebarComponent from '@/components/global/sidebar/view.vue'
-
     defineProps(
     {
         loader: 
@@ -39,9 +37,6 @@
 <template>
     <div class="l-main">
         <div class="flex">
-            <div>
-                <sidebar-component v-if="sidebar" />
-            </div>
             <div class="scrollbar" @scroll="$event => onScroll ? handleScroll($event, onScroll) : null">
                 <slot v-if="!loader" name="top"></slot>
 
