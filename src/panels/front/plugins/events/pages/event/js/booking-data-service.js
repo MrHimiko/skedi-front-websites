@@ -7,11 +7,29 @@ export default {
   },
 
   formatBookingData(bookingData) {
-    const { name, email, notes, guests, selectedDate, selectedTime, duration, timezone } = bookingData;
+    const { 
+      name, 
+      email, 
+      notes, 
+      guests, 
+      selectedDate, 
+      selectedTime, 
+      duration, 
+      timezone,
+      slotData  // The full slot object from the API if available
+    } = bookingData;
     
-    // Convert local time to UTC for API
-    const startTime = this.createDateTimeStringInUTC(selectedDate, selectedTime, timezone);
-    const endTime = this.calculateEndTimeInUTC(selectedDate, selectedTime, duration, timezone);
+    let startTime, endTime;
+    
+    // If we have the full slot object from the API, use those times directly
+    if (slotData && slotData.start && slotData.end) {
+      startTime = slotData.start;
+      endTime = slotData.end;
+    } else {
+      // Fall back to calculating times if we don't have the full slot
+      startTime = this.createDateTimeStringInUTC(selectedDate, selectedTime, timezone);
+      endTime = this.calculateEndTimeInUTC(selectedDate, selectedTime, duration, timezone);
+    }
     
     console.log("Start time (UTC):", startTime);
     console.log("End time (UTC):", endTime);
@@ -29,7 +47,7 @@ export default {
         },
         notes: notes || '',
         duration: duration,
-        timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone, // Include timezone info
+        timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         custom_fields: {} // Reserved for future form builder fields
       })
     };

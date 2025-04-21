@@ -55,118 +55,64 @@ if (props.event && props.event.duration && props.event.duration.length > 0) {
   selectedDuration.value = props.event.duration[0].duration;
 }
 
-// Function to convert a UTC time to the selected timezone
-// Enhanced time conversion function that tracks day changes
-function convertUtcToTimezone(utcHours, utcMinutes, timezoneValue) {
-  try {
-    const timezone = timezoneValue || 'UTC';
-    
-    // Create a UTC date for the selected day with the given time
-    const utcDate = new Date(Date.UTC(
-      props.selectedDate.getFullYear(),
-      props.selectedDate.getMonth(),
-      props.selectedDate.getDate(),
-      utcHours,
-      utcMinutes
-    ));
-    
-    // Store the UTC day for comparison
-    const utcDay = utcDate.getUTCDate();
-    
-    // Format with the target timezone to get the local time
-    const options = { 
-      timeZone: timezone,
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false
-    };
-    
-    // Get the full datetime string in the target timezone
-    const localDateTimeStr = utcDate.toLocaleString('en-US', options);
-    
-    // Split into date and time
-    const [datePart, timePart] = localDateTimeStr.split(', ');
-    const [localMonth, localDay, localYear] = datePart.split('/').map(Number);
-    const [localHours, localMinutes] = timePart.split(':').map(Number);
-    
-    // Create a date object for the local date to check day difference
-    const localDate = new Date(localYear, localMonth - 1, localDay);
-    const selectedDate = new Date(props.selectedDate);
-    
-    // Check if the day has changed
-    const dayDifference = Math.floor(
-      (localDate - new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())) 
-      / (24 * 60 * 60 * 1000)
-    );
-    
-    console.log(`Converting ${utcHours}:${utcMinutes} UTC to ${timezone}: ${localHours}:${localMinutes} (day diff: ${dayDifference})`);
-    
-    return {
-      hour: localHours,
-      minute: localMinutes,
-      dayDifference
-    };
-  } catch (err) {
-    console.error('Error in time conversion:', err);
-    return { hour: utcHours, minute: utcMinutes, dayDifference: 0 };
-  }
-}
-
-// Compute available time slots for selected date with timezone conversion
-// Compute available time slots for selected date with timezone conversion
+// Compute available time slots for selected date
 const availableTimesForSelectedDate = computed(() => {
   if (!props.selectedDate || !props.availableSlots) return [];
   
   const dateStr = props.selectedDate.toISOString().split('T')[0];
-  const slots = props.availableSlots[dateStr] || [];
+  let slots = props.availableSlots[dateStr] || [];
   
   if (slots.includes('loading')) return slots;
   
-  // Get a valid timezone value
-  const timezone = userTimezone.value || 'UTC';
-  console.log('Current timezone for conversion:', timezone);
+  // Check if slots is an array of objects with start_client property (new API format)
+  if (slots.length > 0 && typeof slots[0] === 'object' && slots[0].start_client) {
+    // Use start_client time which is already in user's timezone
+    return slots.map(slot => {
+      // Extract just the time part from the datetime string
+      // Format: "2025-04-14 09:00:00" -> "09:00"
+      const timePart = slot.start_client.split(' ')[1];
+      const timeOnly = timePart ? timePart.substring(0, 5) : '00:00';
+      
+      // Check if time crosses to next day or previous day
+      const slotDate = slot.start_client.split(' ')[0];
+      const selectedDateStr = dateStr;
+      
+      let dayDifference = 0;
+      if (slotDate !== selectedDateStr) {
+        // Determine if it's next day or previous day
+        const slotDateObj = new Date(slotDate);
+        const selectedDateObj = new Date(selectedDateStr);
+        dayDifference = Math.floor((slotDateObj - selectedDateObj) / (24 * 60 * 60 * 1000));
+      }
+      
+      return {
+        time: timeOnly,
+        displayTime: timeOnly,
+        dayDifference: dayDifference,
+        rawTime: slot.start, // Original UTC time
+        fullSlot: slot // Store the full slot object for later reference
+      };
+    }).sort((a, b) => {
+      // Sort by day difference first, then by time
+      if (a.dayDifference !== b.dayDifference) {
+        return a.dayDifference - b.dayDifference;
+      }
+      // For same day, sort by time
+      return a.time.localeCompare(b.time);
+    });
+  }
   
-  // Convert UTC times to selected timezone
-  return slots.map(timeString => {
-    if (timeString === 'loading') return timeString;
-    
-    try {
-      // Parse the time string (e.g., "09:30")
-      const [hours, minutes] = timeString.split(':').map(Number);
-      
-      // Convert the time
-      const localTime = convertUtcToTimezone(hours, minutes, timezone);
-      
-      // Format the time string
-      const formattedTime = `${String(localTime.hour).padStart(2, '0')}:${String(localTime.minute).padStart(2, '0')}`;
-      
-      // Return object with time and display properties
+  // Fallback for old format or other cases
+  return slots.map(slot => {
+    if (typeof slot === 'string') {
       return {
-        time: formattedTime,
-        displayTime: formattedTime + (localTime.dayDifference > 0 ? ' (+1)' : (localTime.dayDifference < 0 ? ' (-1)' : '')),
-        dayDifference: localTime.dayDifference,
-        rawTime: timeString // Original UTC time
-      };
-    } catch (err) {
-      console.error('Error converting time zone:', err, timeString);
-      return {
-        time: timeString,
-        displayTime: timeString,
+        time: slot,
+        displayTime: slot,
         dayDifference: 0,
-        rawTime: timeString
+        rawTime: slot
       };
     }
-  })
-  .sort((a, b) => {
-    // Sort by day difference first, then by time
-    if (a.dayDifference !== b.dayDifference) {
-      return a.dayDifference - b.dayDifference;
-    }
-    // For same day, sort by time
-    return a.time.localeCompare(b.time);
+    return slot;
   });
 });
 
@@ -199,7 +145,13 @@ function toggleTimeFormat() {
 function selectTime(slot) {
   // If slot is a string (from the old format), use it directly
   const timeValue = typeof slot === 'string' ? slot : slot.time;
-  emit('timeSelected', timeValue);
+  
+  // For the new format with full slot objects, pass more data to the parent component
+  if (typeof slot === 'object' && slot.fullSlot) {
+    emit('timeSelected', timeValue, slot.fullSlot);
+  } else {
+    emit('timeSelected', timeValue);
+  }
 }
 
 // Update the duration
@@ -210,17 +162,8 @@ function changeDuration(duration) {
 
 // Update the timezone
 function changeTimezone(event, value) {
-  console.log('Timezone dropdown changed to:', value);
   userTimezone.value = value || 'UTC';
   emit('timezoneChanged', userTimezone.value);
-  
-  // Force the component to re-render by triggering a state update
-  // This will make the computed property re-evaluate
-  const temp = timeFormat.value;
-  timeFormat.value = 'updating';
-  setTimeout(() => {
-    timeFormat.value = temp;
-  }, 0);
 }
 
 // Get the formatted date header
@@ -236,13 +179,7 @@ const formattedDateHeader = computed(() => {
 
 // Set initial timezone
 onMounted(() => {
-  console.log('Component mounted, detected timezone:', userTimezone.value);
   emit('timezoneChanged', userTimezone.value);
-});
-
-// Watch for changes to userTimezone
-watch(userTimezone, (newTimezone) => {
-  console.log('Timezone watch triggered:', newTimezone);
 });
 </script>
 
@@ -305,24 +242,24 @@ watch(userTimezone, (newTimezone) => {
         <p>Please select a date to view available time slots</p>
       </div>
       
-        <!-- Time slots grid -->
-        <div v-else class="time-slots-grid">
-          <button 
-            v-for="slot in availableTimesForSelectedDate" 
-            :key="slot.time"
-            :class="['time-slot-button', { 
-              'selected': selectedTime === slot.time,
-              'next-day': slot.dayDifference > 0,
-              'previous-day': slot.dayDifference < 0
-            }]"
-            @click="selectTime(slot.time)"
-          >
-            {{ formatTime(slot.time) }}
-            <span v-if="slot.dayDifference !== 0" class="day-indicator">
-              {{ slot.dayDifference > 0 ? '(next day)' : '(previous day)' }}
-            </span>
-          </button>
-        </div>
+      <!-- Time slots grid -->
+      <div v-else class="time-slots-grid">
+        <button 
+          v-for="slot in availableTimesForSelectedDate" 
+          :key="slot.time"
+          :class="['time-slot-button', { 
+            'selected': selectedTime === slot.time,
+            'next-day': slot.dayDifference > 0,
+            'previous-day': slot.dayDifference < 0
+          }]"
+          @click="selectTime(slot)"
+        >
+          {{ formatTime(slot.time) }}
+          <span v-if="slot.dayDifference !== 0" class="day-indicator">
+            {{ slot.dayDifference > 0 ? '(next day)' : '(previous day)' }}
+          </span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -351,7 +288,6 @@ watch(userTimezone, (newTimezone) => {
 .time-slot-button.previous-day {
   border-left: 3px solid #8b5cf6; 
 }
-
 
 .time-slots-header {
   padding: 16px;

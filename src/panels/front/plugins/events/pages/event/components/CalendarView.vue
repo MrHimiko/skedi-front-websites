@@ -9,6 +9,14 @@ const props = defineProps({
     selectedDate: {
         type: Date,
         default: null
+    },
+    calendarAvailability: {
+        type: Array,
+        default: () => []
+    },
+    timezone: {
+        type: String,
+        default: ''
     }
 });
 
@@ -49,11 +57,14 @@ const daysInMonth = computed(() => {
             12 // Set to noon to avoid timezone issues
         );
         
+        // Check if this day is available based on the calendarAvailability prop
+        let hasSlots = hasAvailableSlots(date);
+        
         const dayObj = {
             day: date.getDate(),
             date: fixedDate,
             isToday: isToday(date),
-            hasSlots: hasAvailableSlots(date)
+            hasSlots: hasSlots
         };
         days.push(dayObj);
         date.setDate(date.getDate() + 1);
@@ -84,7 +95,7 @@ function isToday(date) {
            date.getFullYear() === today.getFullYear();
 }
 
-// Check if a date has available slots based on the event schedule
+// Check if a date has available slots based on calendarAvailability
 function hasAvailableSlots(date) {
     // First check if the date is not in the past
     const today = new Date();
@@ -94,7 +105,19 @@ function hasAvailableSlots(date) {
         return false;
     }
     
-    // Check if the day is enabled in the event schedule
+    // Check in calendarAvailability if we have data for this date
+    const matchingAvailability = props.calendarAvailability.find(item => {
+        return item.date && 
+               item.date.getDate() === date.getDate() &&
+               item.date.getMonth() === date.getMonth() &&
+               item.date.getFullYear() === date.getFullYear();
+    });
+    
+    if (matchingAvailability) {
+        return matchingAvailability.available;
+    }
+    
+    // If no specific availability info, check the schedule directly
     if (props.event && props.event.schedule) {
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = dayNames[date.getDay()];
@@ -130,17 +153,9 @@ function selectDate(date) {
     );
     
     // Check if this day is enabled in the schedule
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayName = dayNames[selectedDate.getDay()];
-    const daySchedule = props.event.schedule && props.event.schedule[dayName];
-    
-    // If the day is disabled in the schedule, don't process it
-    if (daySchedule && daySchedule.enabled === false) {
-        console.log(`Day ${dayName} is disabled in the schedule`);
-        return;
+    if (hasAvailableSlots(selectedDate)) {
+        emit('dateSelected', selectedDate);
     }
-    
-    emit('dateSelected', selectedDate);
 }
 
 // Find next available day
@@ -157,6 +172,11 @@ function findNextAvailableDay(startDate) {
     
     return null; // No available days found in the next 30 days
 }
+
+// Watch for timezone changes to update the calendar display
+watch(() => props.timezone, () => {
+    // No additional action needed, the parent component handles availability calculation
+});
 
 // Select initial date on mount
 onMounted(() => {
@@ -190,11 +210,9 @@ onMounted(() => {
     }
 });
 
-// Update the current month view when selected date changes to a different month
+// Update the current month view when selected date changes
 watch(() => props.selectedDate, (newDate) => {
-    if (newDate && 
-       (newDate.getMonth() !== currentMonth.value.getMonth() || 
-        newDate.getFullYear() !== currentMonth.value.getFullYear())) {
+    if (newDate) {
         currentMonth.value = new Date(newDate);
     }
 });
@@ -212,6 +230,11 @@ watch(() => props.selectedDate, (newDate) => {
                 <button @click="nextMonth" class="nav-button">
                     <i class="material-icons-outlined">chevron_right</i>
                 </button>
+            </div>
+            
+            <!-- Optional: Show current timezone -->
+            <div v-if="timezone" class="calendar-timezone">
+                {{ timezone }}
             </div>
         </div>
         
@@ -251,6 +274,7 @@ watch(() => props.selectedDate, (newDate) => {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border);
+    position: relative;
 }
 
 .calendar-header {
@@ -269,6 +293,13 @@ watch(() => props.selectedDate, (newDate) => {
     font-weight: 500;
     margin: 0;
     color: var(--text-primary);
+}
+
+.calendar-timezone {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-align: center;
+    margin-top: 8px;
 }
 
 .nav-button {
@@ -296,7 +327,6 @@ watch(() => props.selectedDate, (newDate) => {
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
     background-color: var(--background-1);
-    flex: 1;
     padding: 4px;
 }
 
