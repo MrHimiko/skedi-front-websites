@@ -10,6 +10,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
             '@form': path.resolve(__dirname, './src/components/form'),
             '@floated': path.resolve(__dirname, './src/components/floated'),
+            '@global': path.resolve(__dirname, './src/components/global'),
 
             '@panels': path.resolve(__dirname, './src/panels'),
             '@plugins': path.resolve(__dirname, './src/applications'),
@@ -37,6 +38,7 @@ export default defineConfig({
     },
     server: {
         hmr: true,
+        host: '0.0.0.0',
         allowedHosts: ['app.skedi.com', 'front.skedi.com']
     },
     preview: {

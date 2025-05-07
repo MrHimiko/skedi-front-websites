@@ -5,6 +5,7 @@ function runHooks(...imports)
 {
     return [
         runPluginNotifications,
+        ...imports
     ];
 }
 

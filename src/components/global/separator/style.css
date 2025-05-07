@@ -1,0 +1,47 @@
+.c-separator 
+{
+    position: relative;
+    height: 30px;
+    line-height: 30px;
+}
+
+.c-separator > p 
+{
+    display: inline-block;
+    background-color: var(--background-1);
+    z-index: 100;
+    font-weight: 600;
+    font-size: var(--text-xs);
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: auto;
+    width: fit-content;
+    padding: 0 var(--spacing-4xl);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+}
+
+.c-separator.left > p 
+{
+    right: unset;
+    padding-left: 0;
+}
+
+.c-separator.right > p 
+{
+    right: unset;
+    padding-left: 0;
+}
+
+.c-separator > div 
+{
+    height: 1px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    bottom: 0;
+    margin: auto;
+    background-color: var(--border-primary);
+}

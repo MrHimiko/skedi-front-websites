@@ -7,6 +7,8 @@ export default class
         this.stores = stores;
     
         this.routes()
+
+        console.log('Routes after registration:', this.router.getRoutes());
     }
 
     routes()

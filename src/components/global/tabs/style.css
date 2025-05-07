@@ -1,0 +1,90 @@
+.c-tabs 
+{
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    max-width: max-content;
+    background-color: var(--background-1);
+    padding: 4px 5px;
+    border-radius: 10px;
+}
+
+.c-tabs.column 
+{
+    border-bottom: none;
+    gap: var(--spacing-xl);
+}
+
+.c-tabs > div > *
+{
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    font-weight: 400;
+    gap: var(--spacing-lg);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 10px;
+    border-radius: 6px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+}
+
+
+
+.c-tabs:not(.column) > div > *:hover 
+{
+    background-color: var(--background-2);
+}
+
+.c-tabs:not(.column) > div > *.active
+{
+    background: var(--black);
+    color: var(--white);
+}
+
+.c-tabs.column > div > *:hover 
+{
+    border-left: 2px solid var(--brand-default);
+}
+
+.c-tabs.column > div > *.active
+{
+    color: var(--brand-default);
+    background: var(--brand-fill);
+    border-radius: var(--radius-md);
+    border-left: 2px solid var(--brand-default);
+}
+
+.c-tabs > div > *.active i
+{
+    color: var(--brand-default)!important;
+}
+
+.c-tabs > div > * > .count 
+{
+    background-color: var(--background-2);
+    font-size: var(--text-xxs);
+    width: 20px;
+    height: 20px;;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+    font-weight: 600;
+}
+
+/* Column */
+.c-tabs.column 
+{
+    flex-direction: column;
+}
+
+.c-tabs.column > div
+{
+    width: 100%;
+}

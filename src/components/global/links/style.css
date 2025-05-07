@@ -1,0 +1,31 @@
+.c-links 
+{
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2xl);
+}
+
+.c-links a 
+{
+    text-decoration: underline;
+    color: var(--text-primary);
+    position: relative;
+}
+
+.c-links > div
+{
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.c-links span
+{
+    margin: 0 var(--spacing-xl);
+    color: var(--border-primary);
+}
+
+.c-links a > div 
+{
+    display: none;
+}
