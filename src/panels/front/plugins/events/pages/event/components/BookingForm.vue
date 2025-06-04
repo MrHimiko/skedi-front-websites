@@ -1,359 +1,296 @@
+<!-- File: src/panels/front/plugins/events/pages/event/components/BookingForm.vue -->
+
 <script setup>
-import { ref, computed } from 'vue';
-import InputComponent from '@form/input/view.vue';
-import TextareaComponent from '@form/textarea/view.vue';
+import { ref, computed, onMounted } from 'vue';
 import ButtonComponent from '@form/button/view.vue';
+import DynamicForm from '@/components/forms/dynamic/DynamicForm.vue';
 
 const props = defineProps({
-  event: {
-    type: Object,
-    required: true
-  },
-  organization: {
-    type: Object,
-    required: true
-  },
-  selectedDate: {
-    type: Date,
-    required: true
-  },
-  selectedTime: {
-    type: String,
-    required: true
-  },
-  duration: {
-    type: Number,
-    default: 30
-  },
-  timezone: {
-    type: String,
-    default: ''
-  }
+    event: {
+        type: Object,
+        required: true
+    },
+    organization: {
+        type: Object,
+        required: true
+    },
+    selectedDate: {
+        type: Date,
+        required: true
+    },
+    selectedTime: {
+        type: String,
+        required: true
+    },
+    duration: {
+        type: Number,
+        default: 30
+    },
+    timezone: {
+        type: String,
+        default: ''
+    }
 });
 
 const emit = defineEmits(['submit', 'back']);
 
-// Form data
-const formData = ref({
-  name: '',
-  email: '',
-  notes: '',
-  guests: [],
-  timezone: props.timezone
-});
+// Debug logging
+console.log('BookingForm setup, event:', props.event);
 
-// Format date to display (e.g. "Friday, March 21, 2025")
+// Dynamic form reference
+const dynamicForm = ref(null);
+
+// Format date to display
 const formattedDate = computed(() => {
-  return props.selectedDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
+    return props.selectedDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    });
 });
 
-// Format time range (e.g. "11:30 - 12:00")
+// Format time range
 const formattedTime = computed(() => {
-  // Parse the start time (e.g., "11:30")
-  const [startHour, startMinute] = props.selectedTime.split(':').map(Number);
-  
-  // Calculate end time by adding duration
-  const endMinutes = startHour * 60 + startMinute + props.duration;
-  const endHour = Math.floor(endMinutes / 60) % 24;
-  const endMinute = endMinutes % 60;
-  
-  // Format both times as "HH:MM"
-  const formattedStart = `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`;
-  const formattedEnd = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
-  
-  return `${formattedStart} - ${formattedEnd}`;
+    const [startHour, startMinute] = props.selectedTime.split(':').map(Number);
+    
+    const endMinutes = startHour * 60 + startMinute + props.duration;
+    const endHour = Math.floor(endMinutes / 60) % 24;
+    const endMinute = endMinutes % 60;
+    
+    const formatTime = (hour, minute) => {
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
+    };
+    
+    const formattedStart = formatTime(startHour, startMinute);
+    const formattedEnd = formatTime(endHour, endMinute);
+    
+    return `${formattedStart} - ${formattedEnd}`;
 });
 
-// Display the timezone
+// Display timezone
 const displayTimezone = computed(() => {
-  return props.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return props.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 });
 
-// Handle submit button click
-async function handleSubmit() {
-  // Basic validation
-  if (!formData.value.name.trim()) {
-    alert('Please enter your name');
-    return;
-  }
-  
-  if (!formData.value.email.trim()) {
-    alert('Please enter your email');
-    return;
-  }
-  
-  // Email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(formData.value.email.trim())) {
-    alert('Please enter a valid email address');
-    return;
-  }
-  
-  // Prepare data for submission
-  const bookingData = {
-    ...formData.value,
-    selectedDate: props.selectedDate,
-    selectedTime: props.selectedTime,
-    duration: props.duration,
-    timezone: props.timezone
-  };
-  
-  // Emit submit event with form data
-  emit('submit', bookingData);
+// Check if event has a form_id (for testing, let's use a hardcoded one)
+const hasFormId = computed(() => {
+    // Always true since we're calling the event's form endpoint
+    console.log('Checking hasFormId, event:', props.event);
+    return true;
+});
+
+// Form API endpoint
+const formApiEndpoint = computed(() => {
+    // Use the event ID to get its form
+    console.log('Form API endpoint:', `public/events/${props.event.id}/form`);
+    return `public/events/${props.event.id}/form`;
+});
+
+// Log when component mounts
+onMounted(() => {
+    console.log('BookingForm mounted');
+    console.log('Event ID:', props.event.id);
+    console.log('Event:', props.event);
+    console.log('formApiEndpoint:', formApiEndpoint.value);
+});
+
+// Handle dynamic form submission
+function handleFormSubmit(response) {
+    // Add booking-specific data to the form submission
+    const bookingData = {
+        ...response.fields,
+        selectedDate: props.selectedDate,
+        selectedTime: props.selectedTime,
+        duration: props.duration,
+        timezone: props.timezone
+    };
+    
+    emit('submit', bookingData);
 }
 
-// Handle back button click
+// Handle form errors
+function handleFormError(error) {
+    console.error('Form error:', error);
+}
+
+// Handle back button
 function handleBack() {
-  emit('back');
-}
-
-// Handle input changes
-function updateName(event, value) {
-  formData.value.name = value;
-}
-
-function updateEmail(event, value) {
-  formData.value.email = value;
-}
-
-function updateNotes(value) {
-  formData.value.notes = value;
+    emit('back');
 }
 </script>
 
 <template>
-  <div class="booking-form">
-    <div class="booking-form-container">
-      <div class="booking-form-left">
-        <!-- Organization avatar -->
-        <div class="avatar">
-          <span>{{ organization.name ? organization.name.charAt(0).toUpperCase() : 'O' }}</span>
+    <div class="booking-form">
+        <div class="booking-form-container">
+            <div class="booking-form-left">
+                <!-- Organization avatar -->
+                <div class="avatar">
+                    <span>{{ organization.name ? organization.name.charAt(0).toUpperCase() : 'O' }}</span>
+                </div>
+                
+                <!-- Event name -->
+                <h1 class="event-name">{{ event.name }}</h1>
+                
+                <!-- Selected date/time -->
+                <div class="booking-datetime">
+                    <div class="booking-date">
+                        <i class="material-icons-outlined">event</i>
+                        <span>{{ formattedDate }}</span>
+                    </div>
+                    <div class="booking-time">
+                        <i class="material-icons-outlined">schedule</i>
+                        <span>{{ formattedTime }}</span>
+                    </div>
+                    <div class="booking-timezone">
+                        <i class="material-icons-outlined">public</i>
+                        <span>{{ displayTimezone }}</span>
+                    </div>
+                </div>
+                
+                <!-- Location info -->
+                <div class="booking-location">
+                    <i class="material-icons-outlined">
+                        {{ event.location_type === 'physical' ? 'location_on' : 'videocam' }}
+                    </i>
+                    <span>{{ event.location || 'Skedi Meeting' }}</span>
+                </div>
+            </div>
+            
+            <div class="booking-form-right">
+                <!-- Always show Dynamic Form for testing -->
+                <div class="dynamic-form-wrapper">
+                    <DynamicForm
+                        ref="dynamicForm"
+                        :formId="event.id || 'event-form'"
+                        :apiEndpoint="`public/events/${event.id}/form`"
+                        @submit="handleFormSubmit"
+                        @error="handleFormError"
+                    />
+                </div>
+                
+                <!-- Back button -->
+                <div class="form-actions">
+                    <ButtonComponent 
+                        as="tertiary"
+                        label="Back"
+                        @click="handleBack"
+                    />
+                </div>
+            </div>
         </div>
-        
-        <!-- Event name -->
-        <h1 class="event-name">{{ event.name }}</h1>
-        
-        <!-- Selected date/time -->
-        <div class="booking-datetime">
-          <div class="booking-date">
-            <i class="material-icons-outlined">event</i>
-            <span>{{ formattedDate }}</span>
-          </div>
-          <div class="booking-time">
-            <i class="material-icons-outlined">schedule</i>
-            <span>{{ formattedTime }}</span>
-          </div>
-          <div class="booking-timezone">
-            <i class="material-icons-outlined">public</i>
-            <span>{{ displayTimezone }}</span>
-          </div>
-        </div>
-        
-        <!-- Location info -->
-        <div class="booking-location">
-          <i class="material-icons-outlined">
-            {{ event.location_type === 'physical' ? 'location_on' : 'videocam' }}
-          </i>
-          <span>{{ event.location || 'Skedi Meeting' }}</span>
-        </div>
-      </div>
-      
-      <div class="booking-form-right">
-        <!-- Form fields -->
-        <div class="form-fields">
-          <div class="form-field">
-            <InputComponent
-              label="Your name *" 
-              :value="formData.name"
-              placeholder="John Doe"
-              required
-              @onChange="updateName"
-            />
-          </div>
-          
-          <div class="form-field">
-            <InputComponent
-              label="Email address *" 
-              :value="formData.email"
-              placeholder="you@example.com"
-              type="email"
-              required
-              @onChange="updateEmail"
-            />
-          </div>
-          
-          <div class="form-field">
-            <TextareaComponent 
-              label="Additional notes"
-              value=""
-              placeholder="Please share anything that will help prepare for our meeting."
-              @onInput="updateNotes"
-            />
-          </div>
-          
-          <!-- Add guests feature (future implementation) -->
-          <!-- <div class="form-field add-guests">
-            <button class="add-guests-button">
-              <i class="material-icons-outlined">person_add</i>
-              <span>Add guests</span>
-            </button>
-          </div> -->
-          
-          <!-- Terms and policy links -->
-          <div class="terms-policy">
-            <p>By proceeding, you agree to our <a href="#" class="link">Terms</a> and <a href="#" class="link">Privacy Policy</a></p>
-          </div>
-        </div>
-        
-        <!-- Form actions -->
-        <div class="form-actions">
-          <ButtonComponent 
-            as="tertiary"
-            label="Back"
-            @click="handleBack"
-          />
-          
-          <ButtonComponent 
-            label="Confirm"
-            @click="handleSubmit"
-          />
-        </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <style scoped>
 .booking-form {
-  width: 100%;
-  background-color: var(--background-0);
+    width: 100%;
+    background-color: var(--background-0);
 }
 
 .booking-form-container {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 40px;
-  background-color: var(--background-0);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 30px;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 70px;
+    background-color: var(--background-0);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 30px;
 }
 
 .booking-form-left {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: var(--brand-blue);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--white);
-  margin-bottom: 8px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--brand-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 8px;
 }
 
 .event-name {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-primary);
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
 }
 
 .booking-datetime {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
 }
 
 .booking-date, .booking-time, .booking-timezone, .booking-location {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-secondary);
-  font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
 }
 
 .booking-location {
-  margin-top: 4px;
+    margin-top: 4px;
 }
 
 .material-icons-outlined {
-  color: var(--text-tertiary);
-  font-size: 20px;
+    color: var(--text-tertiary);
+    font-size: 20px;
 }
 
 .booking-form-right {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
 
-.form-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  flex: 1;
+.dynamic-form-wrapper {
+    flex: 1;
 }
 
-.form-field {
-  width: 100%;
+.default-form-fields {
+    flex: 1;
 }
 
-.add-guests-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  color: var(--brand-blue);
-  padding: 0;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.terms-policy {
-  margin-top: 12px;
-  color: var(--text-tertiary);
-  font-size: 14px;
-}
-
-.link {
-  color: var(--brand-blue);
-  text-decoration: none;
-}
-
-.link:hover {
-  text-decoration: underline;
+.no-form-message {
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: center;
+    padding: 40px 20px;
+    background-color: var(--background-1);
+    border-radius: 8px;
+    border: 1px solid var(--border);
 }
 
 .form-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 32px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
 }
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-  .booking-form-container {
-    grid-template-columns: 1fr;
-  }
-  
-  .booking-form-left {
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-  }
+    .booking-form-container {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        padding: 20px;
+    }
+    
+    .booking-form-left {
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+    }
 }
 </style>

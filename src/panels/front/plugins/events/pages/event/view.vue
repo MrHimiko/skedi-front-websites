@@ -227,7 +227,7 @@ const handleFormSubmit = async (formData) => {
     error.value = null;
     
     try {
-        // Call our API to save the booking
+
         const response = await bookingDataService.createBooking(
             formData,
             event.value.id,
@@ -522,7 +522,7 @@ fetchEventData();
     background-color: var(--background-0);
     border-radius: 8px;
     padding: 30px;
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
 }
 
