@@ -29,9 +29,24 @@ export default {
         const submissionData = {
             form_id: formConfig.id,
             form_name: formConfig.name,
-            fields: this.formatFormData(formData, fields, true),
+            fields: {},
             submitted_at: new Date().toISOString()
         };
+        
+        // Process each field
+        fields.forEach(field => {
+            const fieldId = field.id || field.name;
+            if (fieldId && formData[fieldId] !== undefined && formData[fieldId] !== null) {
+                // For guest repeater, ensure it's an array
+                if (field.type === 'guest_repeater') {
+                    submissionData.fields[fieldId] = Array.isArray(formData[fieldId]) 
+                        ? formData[fieldId] 
+                        : [];
+                } else {
+                    submissionData.fields[fieldId] = formData[fieldId];
+                }
+            }
+        });
         
         // Add any additional metadata
         if (formConfig.settings && formConfig.settings.includeUserAgent) {

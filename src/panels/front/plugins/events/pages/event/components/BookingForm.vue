@@ -99,17 +99,42 @@ onMounted(() => {
 
 // Handle dynamic form submission
 function handleFormSubmit(response) {
-    // Add booking-specific data to the form submission
+    console.log('Form submission response:', response);
+    
+    // Extract the form fields
+    const formFields = response.fields || {};
+    
+    // Build booking data with primary guest info
     const bookingData = {
-        ...response.fields,
+        name: formFields.system_contact_name || formFields.name || '',
+        email: formFields.system_contact_email || formFields.email || '',
+        notes: formFields.notes || '',
+        guests: [],
         selectedDate: props.selectedDate,
         selectedTime: props.selectedTime,
         duration: props.duration,
         timezone: props.timezone
     };
     
+    // Add additional guests from the guest repeater field
+    if (formFields.system_contact_guests && Array.isArray(formFields.system_contact_guests)) {
+        bookingData.guests = formFields.system_contact_guests.filter(guest => 
+            guest.email && guest.email.trim() !== ''
+        );
+    }
+    
+    // Include any other custom fields
+    bookingData.customFields = {};
+    Object.keys(formFields).forEach(key => {
+        if (!['system_contact_name', 'system_contact_email', 'system_contact_guests', 'name', 'email', 'notes'].includes(key)) {
+            bookingData.customFields[key] = formFields[key];
+        }
+    });
+    
+    console.log('Processed booking data:', bookingData);
     emit('submit', bookingData);
 }
+
 
 // Handle form errors
 function handleFormError(error) {

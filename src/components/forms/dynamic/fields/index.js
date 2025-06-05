@@ -15,3 +15,4 @@ export { default as ImageField } from './ImageField.vue';
 export { default as VideoField } from './VideoField.vue';
 export { default as DividerField } from './DividerField.vue';
 export { default as GroupField } from './GroupField.vue';
+export { default as GuestRepeaterField  } from './GuestRepeaterField .vue';

@@ -27,7 +27,14 @@ export default {
         
         // First pass: create field map
         fields.forEach(field => {
-            fieldMap.set(field.id, field);
+            // Ensure all fields have an id
+            if (!field.id && field.name) {
+                field.id = field.name;
+            }
+            
+            if (field.id) {
+                fieldMap.set(field.id, field);
+            }
         });
         
         // Second pass: organize fields
