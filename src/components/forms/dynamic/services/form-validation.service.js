@@ -70,22 +70,7 @@ export default {
                 }
                 break;
                 
-            case 'date':
-                if (value) {
-                    const date = new Date(value);
-                    if (isNaN(date.getTime())) {
-                        errors.push('Please enter a valid date');
-                    }
-                    
-                    // Min/max date validation
-                    if (field.minDate && date < new Date(field.minDate)) {
-                        errors.push(`Date must be after ${new Date(field.minDate).toLocaleDateString()}`);
-                    }
-                    if (field.maxDate && date > new Date(field.maxDate)) {
-                        errors.push(`Date must be before ${new Date(field.maxDate).toLocaleDateString()}`);
-                    }
-                }
-                break;
+
                 
             case 'checkbox':
                 if (field.required && (!value || value.length === 0)) {

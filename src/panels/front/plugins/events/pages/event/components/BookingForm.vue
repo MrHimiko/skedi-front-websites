@@ -101,8 +101,9 @@ onMounted(() => {
 function handleFormSubmit(response) {
     console.log('Form submission response:', response);
     
-    // Extract the form fields
+    // Extract the form fields and the form configuration
     const formFields = response.fields || {};
+    const formConfig = response.formConfig || response; // The response might include form configuration
     
     // Build booking data with primary guest info
     const bookingData = {
@@ -123,11 +124,24 @@ function handleFormSubmit(response) {
         );
     }
     
-    // Include any other custom fields
+    // Include any other custom fields with labels
     bookingData.customFields = {};
+    bookingData.customFieldsMetadata = {}; // Store field metadata separately
+    
     Object.keys(formFields).forEach(key => {
         if (!['system_contact_name', 'system_contact_email', 'system_contact_guests', 'name', 'email', 'notes'].includes(key)) {
             bookingData.customFields[key] = formFields[key];
+            
+            // Try to find the field label from the form configuration
+            if (formConfig && formConfig.fields) {
+                const field = formConfig.fields.find(f => f.id === key || f.name === key);
+                if (field) {
+                    bookingData.customFieldsMetadata[key] = {
+                        label: field.label,
+                        type: field.type
+                    };
+                }
+            }
         }
     });
     

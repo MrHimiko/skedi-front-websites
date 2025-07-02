@@ -162,6 +162,12 @@ async function handleSubmit() {
             formConfig.value
         );
         
+        // Include form configuration in the response
+        const responseData = {
+            ...submissionData,
+            formConfig: formConfig.value // Include the full form configuration
+        };
+        
         // Submit form
         if (props.submissionEndpoint) {
             const response = await formSubmissionService.submitForm(
@@ -172,10 +178,10 @@ async function handleSubmit() {
             // Clear saved progress on successful submission
             formSubmissionService.clearProgress(props.formId);
             
-            emit('submit', response);
+            emit('submit', { ...response, formConfig: formConfig.value });
         } else {
             // Just emit the data if no submission endpoint
-            emit('submit', submissionData);
+            emit('submit', responseData);
         }
         
     } catch (err) {
