@@ -1,120 +1,130 @@
-<!-- File: src/components/forms/dynamic/fields/GuestRepeaterField.vue -->
-
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, computed } from 'vue';
 import InputComponent from '@form/input/view.vue';
-import ButtonComponent from '@form/button/view.vue';
+import Button from '@form/button/view.vue';
+import { PhPlus, PhTrash } from "@phosphor-icons/vue";
 
 const props = defineProps({
     field: {
         type: Object,
         required: true
     },
-    modelValue: {
+    value: {
         type: Array,
         default: () => []
     },
-    errors: {
-        type: Array,
-        default: () => []
+    error: {
+        type: [String, Array],
+        default: null
     }
 });
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update']);
 
-// Initialize guests with existing value or empty array
-const guests = ref(props.modelValue || []);
+// Local state for guests
+const guests = ref(props.value || []);
 
-// Watch for external changes
-watch(() => props.modelValue, (newValue) => {
-    guests.value = newValue || [];
-});
+// Update parent when guests change
+const updateGuests = () => {
+    emit('update', guests.value);
+};
 
 // Add a new guest
-function addGuest() {
+const addGuest = () => {
     const maxGuests = props.field.max_guests || 10;
     if (guests.value.length < maxGuests) {
         guests.value.push({
             name: '',
             email: ''
         });
-        emit('update:modelValue', [...guests.value]);
+        updateGuests();
     }
-}
+};
 
 // Remove a guest
-function removeGuest(index) {
+const removeGuest = (index) => {
     guests.value.splice(index, 1);
-    emit('update:modelValue', [...guests.value]);
-}
+    updateGuests();
+};
 
-// Update guest data
-function updateGuest(index, field, value) {
+// Update guest field
+const updateGuestField = (index, field, value) => {
     guests.value[index][field] = value;
-    emit('update:modelValue', [...guests.value]);
-}
+    updateGuests();
+};
+
+// Check if we can add more guests
+const canAddMoreGuests = computed(() => {
+    const maxGuests = props.field.max_guests || 10;
+    return guests.value.length < maxGuests;
+});
+
+// Get error for specific guest
+const getGuestError = (index) => {
+    if (!props.error || typeof props.error !== 'object') return null;
+    return props.error[index] || null;
+};
 </script>
 
 <template>
     <div class="guest-repeater-field">
-        <div class="field-label">
+        <label v-if="field.label" class="field-label">
             {{ field.label }}
             <span v-if="field.required" class="required">*</span>
-        </div>
+        </label>
         
-        <div class="guests-list">
-            <div 
-                v-for="(guest, index) in guests" 
-                :key="index"
-                class="guest-item"
-            >
+        <!-- Guest list -->
+        <div v-if="guests.length > 0" class="guests-list">
+            <div v-for="(guest, index) in guests" :key="index" class="guest-entry">
                 <div class="guest-fields">
-                    <div class="guest-field">
+                    <div class="guest-name">
                         <InputComponent
-                            label="Guest Name"
                             :value="guest.name"
-                            placeholder="Enter guest name"
-                            @onChange="(e, value) => updateGuest(index, 'name', value)"
+                            :label="index === 0 ? 'Guest Name' : ''"
+                            placeholder="Guest name"
+                            @update:modelValue="(value) => updateGuestField(index, 'name', value)"
                         />
                     </div>
-                    <div class="guest-field">
+                    <div class="guest-email">
                         <InputComponent
-                            label="Guest Email"
-                            type="email"
                             :value="guest.email"
-                            placeholder="Enter guest email"
-                            @onChange="(e, value) => updateGuest(index, 'email', value)"
+                            type="email"
+                            :label="index === 0 ? 'Guest Email' : ''"
+                            placeholder="guest@email.com"
+                            :error="getGuestError(index)"
+                            @update:modelValue="(value) => updateGuestField(index, 'email', value)"
+                        />
+                    </div>
+                    <div class="guest-remove">
+                        <Button
+                            as="tertiary"
+                            :icon="{ component: PhTrash, weight: 'bold' }"
+                            @click="removeGuest(index)"
+                            :style="{ marginTop: index === 0 ? '24px' : '0' }"
                         />
                     </div>
                 </div>
-                <button 
-                    type="button"
-                    class="remove-guest"
-                    @click="removeGuest(index)"
-                >
-                    <i class="material-icons-outlined">close</i>
-                </button>
             </div>
         </div>
         
-        <div 
-            v-if="!field.max_guests || guests.length < field.max_guests" 
-            class="add-guest-wrapper"
-        >
-            <ButtonComponent
+        <!-- Add guest button -->
+        <div v-if="canAddMoreGuests" class="add-guest-button">
+            <Button
                 as="secondary"
-                label="Add Guest"
+                :icon="{ component: PhPlus, weight: 'bold' }"
+                :label="guests.length === 0 ? 'Add Guest' : 'Add Another Guest'"
                 @click="addGuest"
             />
-            <span v-if="field.max_guests" class="guest-limit">
-                {{ guests.length }} / {{ field.max_guests }} guests
-            </span>
         </div>
         
-        <div v-if="errors.length > 0" class="field-errors">
-            <span v-for="(error, index) in errors" :key="index" class="error-message">
-                {{ error }}
-            </span>
+        <!-- Max guests reached message -->
+        <div v-else class="max-guests-message">
+            <p>Maximum number of guests ({{ field.max_guests || 10 }}) reached</p>
+        </div>
+        
+        <!-- Field error -->
+        <div v-if="error && typeof error === 'string'" class="field-error">
+            {{ error }}
         </div>
     </div>
 </template>
@@ -125,89 +135,74 @@ function updateGuest(index, field, value) {
 }
 
 .field-label {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 12px;
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
     color: var(--text-primary);
 }
 
 .required {
     color: var(--red-default);
+    margin-left: 4px;
 }
 
 .guests-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
     margin-bottom: 16px;
 }
 
-.guest-item {
-    display: flex;
-    gap: 12px;
-    padding: 16px;
-    background-color: var(--background-1);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    position: relative;
+.guest-entry {
+    margin-bottom: 12px;
 }
 
 .guest-fields {
-    flex: 1;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    align-items: start;
 }
 
-.guest-field {
+.guest-name,
+.guest-email {
     flex: 1;
 }
 
-.remove-guest {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 4px;
+.guest-remove {
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s;
 }
 
-.remove-guest:hover {
-    color: var(--red-default);
-    background-color: var(--background-2);
-}
-
-.add-guest-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.guest-limit {
-    font-size: 12px;
-    color: var(--text-tertiary);
-}
-
-.field-errors {
+.add-guest-button {
     margin-top: 8px;
 }
 
-.error-message {
-    color: var(--red-default);
-    font-size: 12px;
-    display: block;
+.max-guests-message {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: var(--background-1);
+    border-radius: 4px;
+    border: 1px solid var(--border);
 }
 
-@media (max-width: 768px) {
+.max-guests-message p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.field-error {
+    margin-top: 4px;
+    color: var(--red-default);
+    font-size: 14px;
+}
+
+@media (max-width: 600px) {
     .guest-fields {
         grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .guest-remove {
+        margin-top: 5px;
     }
 }
 </style>

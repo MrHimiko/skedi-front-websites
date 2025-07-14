@@ -1,4 +1,3 @@
-<!-- File: src/components/forms/dynamic/fields/DynamicField.vue -->
 
 <script setup>
 import { computed } from 'vue';
@@ -18,6 +17,7 @@ import ImageField from './ImageField.vue';
 import VideoField from './VideoField.vue';
 import DividerField from './DividerField.vue';
 import GroupField from './GroupField.vue';
+import GuestRepeaterField from './GuestRepeaterField.vue';
 
 const props = defineProps({
     field: {
@@ -58,11 +58,25 @@ const fieldComponents = {
     image: ImageField,
     video: VideoField,
     divider: DividerField,
-    group: GroupField
+    group: GroupField,
+    guest_repeater: GuestRepeaterField,
+    // Support old naming conventions
+    input: TextField,
 };
 
 // Get the appropriate component for field type
 const fieldComponent = computed(() => {
+    // Check for system fields that should use specific components
+    if (props.field.name === 'system_contact_name' || (props.field.type === 'text' && props.field.system_field)) {
+        return TextField;
+    }
+    if (props.field.name === 'system_contact_email' || (props.field.type === 'email' && props.field.system_field)) {
+        return EmailField;
+    }
+    if (props.field.name === 'system_contact_guests' || props.field.type === 'guest_repeater') {
+        return GuestRepeaterField;
+    }
+    
     return fieldComponents[props.field.type] || TextField;
 });
 
@@ -85,15 +99,15 @@ const colSpanClass = computed(() => {
             colSpanClass,
             { 'has-errors': errors.length > 0 }
         ]"
+        :id="`field-${field.id || field.name}`"
     >
         <component
             :is="fieldComponent"
             :field="field"
             :modelValue="modelValue"
-            :errors="errors"
-            :formData="formData"
-            :fieldMap="fieldMap"
+            :error="errors[0]"
             @update:modelValue="updateValue"
+            v-bind="$attrs"
         />
     </div>
 </template>
@@ -103,6 +117,11 @@ const colSpanClass = computed(() => {
     width: 100%;
 }
 
+.has-errors {
+    position: relative;
+}
+
+/* Column span utilities */
 .col-span-1 { grid-column: span 1 / span 1; }
 .col-span-2 { grid-column: span 2 / span 2; }
 .col-span-3 { grid-column: span 3 / span 3; }
@@ -115,22 +134,4 @@ const colSpanClass = computed(() => {
 .col-span-10 { grid-column: span 10 / span 10; }
 .col-span-11 { grid-column: span 11 / span 11; }
 .col-span-12 { grid-column: span 12 / span 12; }
-
-@media (max-width: 768px) {
-    /* On mobile, all fields take full width */
-    .col-span-1,
-    .col-span-2,
-    .col-span-3,
-    .col-span-4,
-    .col-span-5,
-    .col-span-6,
-    .col-span-7,
-    .col-span-8,
-    .col-span-9,
-    .col-span-10,
-    .col-span-11,
-    .col-span-12 {
-        grid-column: span 12 / span 12;
-    }
-}
 </style>
