@@ -292,7 +292,7 @@ const canAddMoreGuests = computed(() => {
     display: grid;
     grid-template-columns: 1fr 1fr auto;
     gap: 10px;
-    align-items: start;
+    align-items: end;
 }
 
 .guest-name,

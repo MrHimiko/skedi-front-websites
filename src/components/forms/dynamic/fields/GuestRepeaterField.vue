@@ -97,8 +97,8 @@ const getGuestError = (index) => {
                     </div>
                     <div class="guest-remove">
                         <Button
-                            as="tertiary"
-                            :icon="{ component: PhTrash, weight: 'bold' }"
+                            as="tertiary icon size36"
+                            :iconLeft="{ component: PhTrash, weight: 'bold' }"
                             @click="removeGuest(index)"
                             :style="{ marginTop: index === 0 ? '24px' : '0' }"
                         />
@@ -158,7 +158,7 @@ const getGuestError = (index) => {
     display: grid;
     grid-template-columns: 1fr 1fr auto;
     gap: 10px;
-    align-items: start;
+    align-items: end;
 }
 
 .guest-name,

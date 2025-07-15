@@ -14,16 +14,14 @@
     outline: 1px solid var(--black);
 }
 
-.c-input > div:not(.holder):first-child 
-{
-    margin-bottom: var(--spacing-lg);
-}
 
-.c-input > div > label 
+
+.fields-grid label 
 {
     display: block;
     font-size: 13px;
     font-weight: 600;
+    margin-bottom: 5px;
 }
 
 .c-input > .holder > input 
