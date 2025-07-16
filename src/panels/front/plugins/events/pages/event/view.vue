@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '@utils/api';
 
@@ -15,11 +15,6 @@ const route = useRoute();
 const organizationSlug = route.params.organizationSlug;
 const eventSlug = route.params.eventSlug;
 
-// Check if embedded
-const isEmbedded = computed(() => route.query.embedded === 'true');
-const embedTheme = computed(() => route.query.theme || 'light');
-const hideHeader = computed(() => route.query.hideHeader === 'true');
-
 // Define view state (CALENDAR, FORM, CONFIRMATION)
 const viewState = ref('CALENDAR');
 
@@ -28,60 +23,23 @@ const loading = ref(true);
 const error = ref(null);
 const organization = ref(null);
 const event = ref(null);
-const availableSlots = ref(null);
+const availableSlots = ref({});
 const selectedDate = ref(null);
 const selectedTime = ref(null);
 const selectedSlotData = ref(null);
 const selectedDuration = ref(30);
 const selectedTimezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-// Height observer for embedded mode
-let resizeObserver = null;
+// Debouncing and caching variables
+let fetchDebounceTimer = null;
+const slotsCache = ref({});
+const initialLoadComplete = ref(false);
 
-// Send height updates when embedded
-const sendHeightUpdate = () => {
-    if (isEmbedded.value && window.parent) {
-        const height = document.body.scrollHeight;
-        window.parent.postMessage({
-            type: 'skedi-resize',
-            height: height,
-            widgetId: window.location.search
-        }, '*');
-    }
+// Create cache key generator
+const getCacheKey = (date, duration, timezone) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return `${dateStr}_${duration}_${timezone}`;
 };
-
-// Setup embedded mode
-onMounted(() => {
-    if (isEmbedded.value) {
-        // Add embedded class to body
-        document.body.classList.add('skedi-embedded');
-        if (embedTheme.value === 'dark') {
-            document.body.classList.add('skedi-dark-theme');
-        }
-        
-        // Initial height update
-        setTimeout(sendHeightUpdate, 100);
-        
-        // Watch for height changes
-        resizeObserver = new ResizeObserver(sendHeightUpdate);
-        resizeObserver.observe(document.body);
-        
-        // Also send height on view state changes
-        watch(viewState, () => {
-            setTimeout(sendHeightUpdate, 100);
-        });
-    }
-});
-
-// Cleanup
-onUnmounted(() => {
-    if (resizeObserver) {
-        resizeObserver.disconnect();
-    }
-    if (isEmbedded.value) {
-        document.body.classList.remove('skedi-embedded', 'skedi-dark-theme');
-    }
-});
 
 // Calculate timezone difference in hours between UTC and selected timezone
 const getTimezoneOffset = (timezone) => {
@@ -126,74 +84,75 @@ const calendarAvailability = computed(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     
-    // First day of the month
-    const firstDay = new Date(year, month, 1);
+    // Generate availability for a broader range around the current month
+    const startDate = new Date(year, month - 1, 1); // Previous month
+    const endDate = new Date(year, month + 2, 0); // Next month's last day
     
-    // Last day of the month
-    const lastDay = new Date(year, month + 1, 0);
-    
-    // Today's date for disabling past days
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get timezone offset in hours
-    const timezoneOffset = getTimezoneOffset(selectedTimezone.value);
-    
-    // Array to hold days and their availability
     const availability = [];
+    const currentDate = new Date(startDate);
     
-    // For each day in the month
-    const currentDate = new Date(firstDay);
-    while (currentDate <= lastDay) {
-        // Skip past dates
-        if (currentDate < today) {
-            currentDate.setDate(currentDate.getDate() + 1);
-            continue;
-        }
-        
-        // Get day of week
-        const dayOfWeek = currentDate.getDay();
+    // Calculate timezone offset once
+    const timezoneOffsetHours = getTimezoneOffset(selectedTimezone.value);
+    
+    while (currentDate <= endDate) {
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         
-        // Check if this day or adjacent days are enabled in the schedule
+        // Check which day of the week in the selected timezone
+        let adjustedDate = new Date(currentDate);
+        
+        // If timezone offset might change the day, we need to check adjacent days too
+        const localDayIndex = adjustedDate.getDay();
+        const dayName = dayNames[localDayIndex];
+        const daySchedule = event.value.schedule[dayName];
+        
+        // Also check if previous or next day's schedule might affect this date
+        const prevDayName = dayNames[(localDayIndex + 6) % 7];
+        const prevDaySchedule = event.value.schedule[prevDayName];
+        const nextDayName = dayNames[(localDayIndex + 1) % 7];
+        const nextDaySchedule = event.value.schedule[nextDayName];
+        
         let isAvailable = false;
         
-        // Current day
-        const currentDayName = dayNames[dayOfWeek];
-        const currentDayEnabled = event.value.schedule[currentDayName]?.enabled === true;
+        // Check if the current day is enabled
+        const currentDayEnabled = daySchedule && daySchedule.enabled;
         
-        // Previous day (for positive timezone offset / behind UTC like USA)
-        const prevDayIndex = (dayOfWeek - 1 + 7) % 7;
-        const prevDayName = dayNames[prevDayIndex];
-        const prevDayEnabled = event.value.schedule[prevDayName]?.enabled === true;
-        
-        // Next day (for negative timezone offset / ahead of UTC like Japan)
-        const nextDayIndex = (dayOfWeek + 1) % 7;
-        const nextDayName = dayNames[nextDayIndex];
-        const nextDayEnabled = event.value.schedule[nextDayName]?.enabled === true;
-        
-        // If timezone is behind UTC (positive offset like USA)
-        if (timezoneOffset > 0 && prevDayEnabled) {
-            // Check if previous day has late hours that would be in the current day in timezone
-            const prevDayEndTime = event.value.schedule[prevDayName]?.end_time;
-            if (prevDayEndTime) {
-                const [endHour] = prevDayEndTime.split(':').map(Number);
-                if (endHour >= 24 - timezoneOffset) {
+        // For positive timezone offsets (e.g., Europe), check if previous day's late hours spill into this day
+        if (timezoneOffsetHours > 0 && prevDaySchedule && prevDaySchedule.enabled) {
+            // Check if previous day has late hours that become this day in user's timezone
+            if (prevDaySchedule.start) {
+                const [prevHour] = prevDaySchedule.start.split(':').map(Number);
+                if (prevHour + timezoneOffsetHours >= 24) {
                     isAvailable = true;
                 }
-            } else {
-                // If no end time specified, assume it's just enabled
-                isAvailable = true;
             }
         }
         
-        // If timezone is ahead of UTC (negative offset like Japan)
-        if (timezoneOffset < 0 && nextDayEnabled) {
-            // Check if next day has early hours that would be in the current day in timezone
-            const nextDayStartTime = event.value.schedule[nextDayName]?.start_time;
-            if (nextDayStartTime) {
-                const [startHour] = nextDayStartTime.split(':').map(Number);
-                if (startHour <= Math.abs(timezoneOffset)) {
+        // For negative timezone offsets (e.g., Americas), check if next day's early hours spill into this day
+        if (timezoneOffsetHours < 0 && nextDaySchedule && nextDaySchedule.enabled) {
+            // Check if next day has early hours that become this day in user's timezone
+            if (nextDaySchedule.end) {
+                const [nextEndHour] = nextDaySchedule.end.split(':').map(Number);
+                if (nextEndHour + timezoneOffsetHours < 0) {
+                    isAvailable = true;
+                }
+            }
+        }
+        
+        // The current day is available based on its schedule
+        if (currentDayEnabled) {
+            if (daySchedule.start && daySchedule.end) {
+                // Check if any part of the schedule falls within the user's day
+                const [startHour] = daySchedule.start.split(':').map(Number);
+                const [endHour] = daySchedule.end.split(':').map(Number);
+                
+                // Adjust hours to user timezone
+                const userStartHour = startHour + timezoneOffsetHours;
+                const userEndHour = endHour + timezoneOffsetHours;
+                
+                // If the schedule crosses into this day in user timezone
+                if ((userStartHour < 24 && userEndHour > 0) || 
+                    (userStartHour < 0 && userEndHour > 0) ||
+                    (userStartHour < 24 && userEndHour > 24)) {
                     isAvailable = true;
                 }
             } else {
@@ -230,8 +189,44 @@ const bookingData = ref({
 
 // Handle date selection
 const handleDateSelected = async (date) => {
+    console.log('handleDateSelected called with date:', date.toISOString().split('T')[0]);
+    console.log('initialLoadComplete:', initialLoadComplete.value);
+    console.log('Current selectedDate:', selectedDate.value?.toISOString().split('T')[0]);
+    
+    // Skip if initial load is not complete yet
+    if (!initialLoadComplete.value) {
+        console.log('Skipping date selection - initial load not complete');
+        return;
+    }
+    
+    // Check if this is the same date that's already selected and has slots
+    if (selectedDate.value && isSameDay(selectedDate.value, date)) {
+        const dateStr = date.toISOString().split('T')[0];
+        if (availableSlots.value[dateStr]) {
+            console.log('Slots already loaded for this date, skipping fetch');
+            return;
+        }
+    }
+    
     selectedDate.value = date;
-    await fetchAvailableSlotsForDate(date);
+    
+    // Clear any pending fetch
+    if (fetchDebounceTimer) {
+        clearTimeout(fetchDebounceTimer);
+    }
+    
+    // Debounce the API call
+    fetchDebounceTimer = setTimeout(async () => {
+        await fetchAvailableSlotsForDate(date);
+    }, 100); // 100ms debounce
+};
+
+// Helper function to check if two dates are the same day
+const isSameDay = (date1, date2) => {
+    if (!date1 || !date2) return false;
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
 };
 
 // Handle time selection
@@ -250,6 +245,7 @@ const handleTimeSelected = (time, fullSlot = null) => {
 // Handle duration change
 const handleDurationChanged = (duration) => {
     selectedDuration.value = duration;
+    slotsCache.value = {}; // Clear all cache
     
     // If a date is already selected, reload slots with new duration
     if (selectedDate.value) {
@@ -261,6 +257,7 @@ const handleDurationChanged = (duration) => {
 const handleTimezoneChanged = (timezone) => {
     selectedTimezone.value = timezone;
     bookingData.value.timezone = timezone;
+    slotsCache.value = {}; // Clear all cache
     
     // If a date is already selected, reload slots with new timezone
     if (selectedDate.value) {
@@ -280,7 +277,6 @@ const handleFormSubmit = async (formData) => {
     error.value = null;
     
     try {
-
         const response = await bookingDataService.createBooking(
             formData,
             event.value.id,
@@ -293,15 +289,6 @@ const handleFormSubmit = async (formData) => {
             
             // Transition to confirmation view
             viewState.value = 'CONFIRMATION';
-            
-            // Notify parent window if embedded
-            if (isEmbedded.value && window.parent) {
-                window.parent.postMessage({
-                    type: 'skedi-booking-complete',
-                    bookingData: response.data,
-                    widgetId: window.location.search
-                }, '*');
-            }
         } else {
             // Handle API error with more details
             console.error('API Error:', response);
@@ -330,21 +317,28 @@ const handleBackToCalendar = () => {
     selectedTime.value = null;
 };
 
-// Helper function to fetch available slots for a specific date
+// Helper function to fetch available slots for a specific date with caching
 const fetchAvailableSlotsForDate = async (date) => {
     try {
-        // Show loading state
         const formattedDate = date.toISOString().split('T')[0];
+        let durationValue = selectedDuration.value || 30;
+        
+        // Check cache first
+        const cacheKey = getCacheKey(date, durationValue, selectedTimezone.value);
+        if (slotsCache.value[cacheKey]) {
+            console.log(`Using cached slots for ${formattedDate}`);
+            availableSlots.value = slotsCache.value[cacheKey];
+            return availableSlots.value;
+        }
+        
+        // Show loading state
         const loadingSlots = {};
         loadingSlots[formattedDate] = ['loading'];
         availableSlots.value = loadingSlots;
         
-        // Get the duration value
-        let durationValue = selectedDuration.value || 30;
-        
         console.log(`Fetching slots for date: ${formattedDate}, duration: ${durationValue}, timezone: ${selectedTimezone.value}`);
 
-        // Get available slots for the specific date
+        // Get available slots for the specific date using the service
         const slotsResponse = await bookingDataService.getAvailableSlots(
             eventSlug, 
             organizationSlug, 
@@ -358,20 +352,19 @@ const fetchAvailableSlotsForDate = async (date) => {
         }
         
         // Process the API response
+        let slots = {};
         if (slotsResponse.data && slotsResponse.data.slots && Array.isArray(slotsResponse.data.slots)) {
             // New API format - slots property with objects containing start/end times
-            const slots = {};
             slots[formattedDate] = slotsResponse.data.slots;
-            availableSlots.value = slots;
         } else {
             // Old API format or simple array of times
             const availableTimes = Array.isArray(slotsResponse.data) ? slotsResponse.data : [];
-            
-            // Structure the slots in a format the calendar component expects
-            const slots = {};
             slots[formattedDate] = availableTimes;
-            availableSlots.value = slots;
         }
+        
+        // Cache the result
+        slotsCache.value[cacheKey] = slots;
+        availableSlots.value = slots;
         
         return availableSlots.value;
     } catch (err) {
@@ -387,13 +380,66 @@ const fetchAvailableSlotsForDate = async (date) => {
     }
 };
 
-// Fetch event data on component mount
+// Fetch event data AND initial slots with combined endpoint
 const fetchEventData = async () => {
     try {
         loading.value = true;
         error.value = null;
         
-        // Get event details using the public endpoint
+        // Try the combined initial-load endpoint first
+        try {
+            const response = await api.get(
+                `public/organizations/${organizationSlug}/events/${eventSlug}/initial-load?timezone=${encodeURIComponent(selectedTimezone.value)}&duration=${selectedDuration.value}&buffer_hours=1`
+            );
+            
+            if (response.success && response.data.event && response.data.initial_slots) {
+                console.log('Using combined initial-load endpoint');
+                
+                // Extract event data
+                event.value = response.data.event;
+                
+                // Set initial selected duration
+                if (event.value?.duration?.length > 0) {
+                    selectedDuration.value = event.value.duration[0].duration;
+                }
+                
+                // Set organization data
+                organization.value = {
+                    id: event.value.organization_id,
+                    slug: organizationSlug,
+                    name: event.value.organization_name || organizationSlug
+                };
+                
+                // Set initial available slots if provided
+                if (response.data.initial_slots && response.data.initial_slots.date) {
+                    const initialDate = new Date(response.data.initial_slots.date + 'T12:00:00');
+                    selectedDate.value = initialDate;
+                    
+                    // Set the slots
+                    const slots = {};
+                    slots[response.data.initial_slots.date] = response.data.initial_slots.slots;
+                    availableSlots.value = slots;
+                    
+                    // Cache the initial slots
+                    const cacheKey = getCacheKey(
+                        initialDate, 
+                        parseInt(response.data.initial_slots.duration), 
+                        response.data.initial_slots.timezone
+                    );
+                    slotsCache.value[cacheKey] = slots;
+                    
+                    console.log('Initial load complete - date and slots pre-loaded');
+                }
+                
+                loading.value = false;
+                initialLoadComplete.value = true;
+                return; // Successfully loaded with combined endpoint
+            }
+        } catch (combinedError) {
+            console.log('Combined endpoint not available, falling back to separate calls');
+        }
+        
+        // Fallback: Use separate API calls
         const eventResponse = await api.get(`public/organizations/${organizationSlug}/events/${eventSlug}`);
         
         if (!eventResponse.success) {
@@ -408,7 +454,7 @@ const fetchEventData = async () => {
             selectedDuration.value = event.value.duration[0].duration;
         }
         
-        // For organization, we can use the name from the URL slug until we need more details
+        // Set organization data
         organization.value = {
             id: event.value.organization_id,
             slug: organizationSlug,
@@ -416,6 +462,10 @@ const fetchEventData = async () => {
         };
         
         loading.value = false;
+        initialLoadComplete.value = true;
+        
+        // Let CalendarView select the initial date, which will trigger fetchAvailableSlotsForDate
+        
     } catch (err) {
         console.error('Error fetching data:', err);
         error.value = err.message || 'An error occurred';
@@ -428,7 +478,7 @@ fetchEventData();
 </script>
 
 <template>
-    <div class="event-page" :class="{ 'embedded': isEmbedded, 'dark-theme': embedTheme === 'dark' }">
+    <div class="event-page">
         <!-- Loading and error states -->
         <div v-if="loading" class="loading-container">
             <div class="loader"></div>
@@ -460,6 +510,7 @@ fetchEventData();
                 <!-- Middle column: Calendar -->
                 <div class="booking-column calendar-column">
                     <CalendarView 
+                        v-if="!loading && event"
                         :event="event"
                         @dateSelected="handleDateSelected"
                         :selectedDate="selectedDate"
@@ -482,13 +533,14 @@ fetchEventData();
                 </div>
             </div>
             
-            <!-- Booking form -->
-            <div v-else-if="viewState === 'FORM'" class="booking-form-container">
-                <BookingForm
+            <!-- Booking form view -->
+            <div v-if="viewState === 'FORM'" class="booking-form-container">
+                <BookingForm 
                     :event="event"
                     :organization="organization"
                     :selectedDate="selectedDate"
                     :selectedTime="selectedTime"
+                    :selectedSlot="selectedSlotData"
                     :duration="selectedDuration"
                     :timezone="selectedTimezone"
                     @submit="handleFormSubmit"
@@ -497,15 +549,15 @@ fetchEventData();
             </div>
             
             <!-- Confirmation view -->
-            <div v-else-if="viewState === 'CONFIRMATION'" class="confirmation-container">
-                <ConfirmationView
+            <div v-if="viewState === 'CONFIRMATION'" class="confirmation-container">
+                <ConfirmationView 
                     :event="event"
                     :organization="organization"
+                    :bookingData="bookingData"
                     :selectedDate="selectedDate"
                     :selectedTime="selectedTime"
                     :duration="selectedDuration"
                     :timezone="selectedTimezone"
-                    :bookingData="bookingData"
                 />
             </div>
         </div>
@@ -514,51 +566,26 @@ fetchEventData();
 
 <style scoped>
 .event-page {
-    display: flex;
-    flex-direction: column;
     min-height: 100vh;
     background-color: var(--background-1);
-    color: var(--text-primary);
-    padding: 20px;
 }
 
-/* Embedded mode styles */
-.event-page.embedded {
-    min-height: auto;
-    padding: 0;
-    background-color: transparent;
-}
-
-.event-page.embedded .booking-content {
-    max-width: 100%;
-}
-
-/* Dark theme support */
-.event-page.dark-theme {
-    background-color: #1a1a1a;
-    color: #ffffff;
-}
-
-.event-page.dark-theme .booking-column {
-    background-color: #2a2a2a;
-    border-color: #3a3a3a;
-}
-
-.loading-container, .error-container {
+/* Loading state */
+.loading-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 50vh;
-    text-align: center;
+    min-height: 60vh;
+    padding: 40px;
 }
 
 .loader {
-    border: 3px solid var(--background-2);
+    border: 3px solid var(--background-3);
     border-radius: 50%;
     border-top: 3px solid var(--brand-blue);
-    width: 30px;
-    height: 30px;
+    width: 40px;
+    height: 40px;
     animation: spin 1s linear infinite;
     margin-bottom: 20px;
 }
@@ -568,105 +595,118 @@ fetchEventData();
     100% { transform: rotate(360deg); }
 }
 
-.booking-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
+.loading-container p {
+    color: var(--text-secondary);
+    font-size: 16px;
 }
 
+/* Error state */
+.error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 40px;
+    text-align: center;
+}
+
+.error-container h2 {
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.error-container p {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    max-width: 500px;
+}
+
+.error-container button {
+    background-color: var(--brand-blue);
+    color: var(--white);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.error-container button:hover {
+    background-color: var(--brand-blue-dark);
+}
+
+/* Main booking content */
+.booking-content {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* Booking grid layout */
 .booking-grid {
     display: grid;
-    grid-template-columns: 300px 1fr 250px;
-    gap: 20px;
+    grid-template-columns: 350px 400px 1fr;
+    gap: 24px;
+    height: calc(100vh - 48px);
     min-height: 600px;
 }
 
 .booking-column {
-    background-color: var(--background-0);
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
-.event-info-column {
-    padding: 20px;
-}
-
-.calendar-column {
-    max-height: 600px;
-}
-
-.time-slots-column {
-    max-height: 600px;
-    overflow-y: auto;
-}
-
+/* Form and confirmation containers */
 .booking-form-container,
 .confirmation-container {
-    background-color: var(--background-0);
-    border-radius: 8px;
-    padding: 30px;
-    max-width: 900px;
+    max-width: 800px;
     margin: 0 auto;
 }
 
-/* Mobile responsiveness */
+/* Responsive design */
+@media (max-width: 1200px) {
+    .booking-grid {
+        grid-template-columns: 300px 350px 1fr;
+        gap: 16px;
+    }
+}
+
 @media (max-width: 1024px) {
     .booking-grid {
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto;
-        gap: 15px;
+        height: auto;
+        min-height: 0;
     }
     
     .booking-column {
         max-height: none;
     }
+    
+    .calendar-column {
+        order: 2;
+    }
+    
+    .time-slots-column {
+        order: 3;
+        min-height: 400px;
+    }
+    
+    .event-info-column {
+        order: 1;
+    }
 }
 
-/* Button styling */
-button {
-    background-color: var(--brand-blue);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-button:hover {
-    background-color: #1a73e8;
-}
-
-/* Error styling */
-.error-container h2 {
-    color: var(--red-default);
-    margin-bottom: 8px;
-}
-
-.error-container p {
-    color: var(--text-secondary);
-    margin-bottom: 20px;
-}
-</style>
-
-<style>
-/* Global styles for embedded mode - not scoped */
-body.skedi-embedded {
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow-x: hidden !important;
-}
-
-body.skedi-embedded .header-navigation,
-body.skedi-embedded .footer,
-body.skedi-embedded .sidebar {
-    display: none !important;
-}
-
-body.skedi-dark-theme {
-    background-color: #1a1a1a !important;
-    color: #ffffff !important;
+@media (max-width: 640px) {
+    .booking-content {
+        padding: 16px;
+    }
+    
+    .booking-grid {
+        gap: 12px;
+    }
 }
 </style>

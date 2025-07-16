@@ -25,6 +25,9 @@ const emit = defineEmits(['dateSelected']);
 // Current month being viewed
 const currentMonth = ref(new Date());
 
+// Flag to prevent duplicate initialization
+const isInitialized = ref(false);
+
 // Compute the month and year label (e.g. "March 2025")
 const monthYearLabel = computed(() => {
     const options = { month: 'long', year: 'numeric' };
@@ -154,7 +157,13 @@ function selectDate(date) {
     
     // Check if this day is enabled in the schedule
     if (hasAvailableSlots(selectedDate)) {
-        emit('dateSelected', selectedDate);
+        // Check if it's already the selected date to prevent duplicate emissions
+        if (!props.selectedDate || !isSameDay(props.selectedDate, selectedDate)) {
+            console.log('CalendarView: Emitting dateSelected for', selectedDate.toISOString().split('T')[0]);
+            emit('dateSelected', selectedDate);
+        } else {
+            console.log('CalendarView: Date already selected, not emitting', selectedDate.toISOString().split('T')[0]);
+        }
     }
 }
 
@@ -180,11 +189,20 @@ watch(() => props.timezone, () => {
 
 // Select initial date on mount
 onMounted(() => {
-    // If there's already a selected date, use that month
-    if (props.selectedDate) {
-        currentMonth.value = new Date(props.selectedDate);
-    } else {
-        // Otherwise, select today's date if it's available, or the next available day
+    // Prevent duplicate initialization
+    if (isInitialized.value) return;
+    isInitialized.value = true;
+    
+    // Add a small delay to ensure all props are properly set
+    setTimeout(() => {
+        // If there's already a selected date, just update the month view
+        if (props.selectedDate) {
+            currentMonth.value = new Date(props.selectedDate);
+            // Don't emit dateSelected - parent already has date and slots
+            return;
+        }
+        
+        // Only auto-select if no date is selected yet
         const today = new Date();
         
         if (hasAvailableSlots(today)) {
@@ -207,7 +225,7 @@ onMounted(() => {
                 }
             }
         }
-    }
+    }, 0);
 });
 
 // Update the current month view when selected date changes
@@ -289,118 +307,114 @@ watch(() => props.selectedDate, (newDate) => {
 }
 
 .month-label {
+    margin: 0;
     font-size: 18px;
     font-weight: 500;
-    margin: 0;
     color: var(--text-primary);
-}
-
-.calendar-timezone {
-    font-size: 12px;
-    color: var(--text-tertiary);
-    text-align: center;
-    margin-top: 8px;
 }
 
 .nav-button {
     background: none;
     border: none;
-    color: var(--text-primary);
-    font-size: 20px;
     cursor: pointer;
-    padding: 8px;
+    color: var(--text-secondary);
+    padding: 4px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    transition: background-color 0.2s;
 }
 
 .nav-button:hover {
     background-color: var(--background-2);
 }
 
+.nav-button i {
+    font-size: 20px;
+}
+
+.calendar-timezone {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-align: center;
+}
+
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
-    background-color: var(--background-1);
-    padding: 4px;
+    background-color: var(--border);
+    padding: 1px;
+    flex: 1;
 }
 
 .weekday-header {
+    background-color: var(--background-0);
+    padding: 8px;
     text-align: center;
-    padding: 12px 0;
-    font-weight: 600;
     font-size: 12px;
+    font-weight: 500;
     color: var(--text-tertiary);
 }
 
 .calendar-day {
-    aspect-ratio: 1/1;
+    background-color: var(--background-0);
+    min-height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--background-0);
     cursor: pointer;
     position: relative;
-    border-radius: 4px;
-    transition: background-color 0.2s;
+}
+
+.calendar-day.empty {
+    cursor: default;
+}
+
+.calendar-day.has-slots:hover {
+    background-color: var(--background-1);
+}
+
+.calendar-day.selected {
+    background-color: var(--brand-blue);
+}
+
+.calendar-day.selected .day-number {
+    color: var(--white);
+}
+
+.calendar-day.today .day-number {
+    font-weight: 700;
+}
+
+.calendar-day.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.calendar-day.disabled:hover {
+    background-color: var(--background-0);
 }
 
 .day-number {
-    font-weight: 500;
     font-size: 14px;
     color: var(--text-primary);
 }
 
-.empty {
-    background-color: var(--background-1);
-    cursor: default;
-}
-
-.today {
-    border: 1px solid var(--brand-blue);
-}
-
-.selected {
-    background-color: var(--brand-blue);
-    border: none;
-}
-
-.selected .day-number {
-    color: white;
-    font-weight: 600;
-}
-
-.has-slots:hover {
-    background-color: var(--background-2);
-}
-
-.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: var(--background-2);
-    position: relative;
-}
-
-.disabled::after {
-    content: "";
+.calendar-day.today::after {
+    content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 5px,
-        rgba(0, 0, 0, 0.05) 5px,
-        rgba(0, 0, 0, 0.05) 10px
-    );
-    pointer-events: none;
-    border-radius: 4px;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    background-color: var(--brand-blue);
+    border-radius: 50%;
+}
+
+.calendar-day.selected.today::after {
+    background-color: var(--white);
 }
 </style>
