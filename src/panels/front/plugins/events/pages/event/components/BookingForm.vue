@@ -4,6 +4,7 @@
 import { ref, computed, onMounted } from 'vue';
 import ButtonComponent from '@form/button/view.vue';
 import DynamicForm from '@/components/forms/dynamic/DynamicForm.vue';
+import { PotentialLeadsService } from '@/panels/front/services/potential-leads';
 
 const props = defineProps({
     event: {
@@ -39,6 +40,10 @@ console.log('BookingForm setup, event:', props.event);
 
 // Dynamic form reference
 const dynamicForm = ref(null);
+
+// Variables for email capture
+let emailCaptured = false;
+let captureTimeout = null;
 
 // Format date to display
 const formattedDate = computed(() => {
@@ -89,12 +94,55 @@ const formApiEndpoint = computed(() => {
     return `public/events/${props.event.id}/form`;
 });
 
+// Setup email listener
+function setupEmailListener() {
+    // Use MutationObserver to wait for the form to render
+    const observer = new MutationObserver(() => {
+        const emailInput = document.querySelector('#field-system_contact_email input');
+        if (emailInput) {
+            observer.disconnect();
+            
+            // Add change listener
+            emailInput.addEventListener('input', (e) => {
+                const email = e.target.value;
+                
+                // Clear previous timeout
+                clearTimeout(captureTimeout);
+                
+                // Validate email
+                if (email && email.includes('@') && email.includes('.') && !emailCaptured) {
+                    captureTimeout = setTimeout(() => {
+                        // Get name if available
+                        const nameInput = document.querySelector('#field-system_contact_name input');
+                        const name = nameInput ? nameInput.value : null;
+                        
+                        // Call API
+                        PotentialLeadsService.captureLead(props.event.slug, {
+                            email: email,
+                            name: name
+                        }).then(() => {
+                            emailCaptured = true;
+                            console.log('Lead captured:', email);
+                        });
+                    }, 1000); // Wait 1 second after typing stops
+                }
+            });
+        }
+    });
+    
+    // Start observing
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
 // Log when component mounts
 onMounted(() => {
     console.log('BookingForm mounted');
     console.log('Event ID:', props.event.id);
     console.log('Event:', props.event);
     console.log('formApiEndpoint:', formApiEndpoint.value);
+    
+    // Listen for email field changes
+    setupEmailListener();
 });
 
 // Handle dynamic form submission
@@ -148,7 +196,6 @@ function handleFormSubmit(response) {
     console.log('Processed booking data:', bookingData);
     emit('submit', bookingData);
 }
-
 
 // Handle form errors
 function handleFormError(error) {

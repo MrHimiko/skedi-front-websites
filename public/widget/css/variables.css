@@ -1,0 +1,104 @@
+:root 
+{
+    --spacing-xs: 1px;
+	--spacing-sm: 2px;
+	--spacing-md: 4px;
+	--spacing-lg: 8px;
+	--spacing-xl: 12px;
+	--spacing-2xl: 16px;
+	--spacing-3xl: 20px;
+	--spacing-4xl: 24px;
+	--spacing-5xl: 32px;
+	--spacing-6xl: 40px;
+	--spacing-7xl: 48px;
+	--spacing-8xl: 64px;
+	--spacing-9xl: 72px;
+	--spacing-10xl: 96px;
+	--spacing-11xl: 128px;
+	--spacing-12xl: 256px;
+	--spacing-13xl: 320px;
+	--spacing-14xl: 512px;
+
+	--radius-none: 0px;
+	--radius-xs: 2px;
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+	--radius-2xl: 24px;
+	--radius-3xl: 32px;
+	--radius-full: 10240px;
+
+	--text-xxs: 10px;
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-base: 16px;
+    --text-lg: 20px;
+    --text-xl: 20px;
+    --text-2xl: 24px;
+    --text-3xl: 30px;
+    --text-4xl: 36px;
+    --text-5xl: 48px;
+    --text-6xl: 60px;
+    --text-7xl: 72px;
+
+    --font-primary: 'Satoshi';
+    --font-secondary: 'Satoshi';
+}
+
+:root 
+{
+    --black: #000000;    
+    --black-40: rgba(0,0,0,0.4);  
+
+    --white: #FFF;    
+
+    --brand-yellow: #FFDE0E;     
+    --brand-yellow-light: #FFED7A;
+
+    --brand-blue: #2B88EF; 
+    
+    --brand-fill: rgba(0, 0, 0, 0.1);      
+  
+    --text-primary: rgba(0, 0, 0, 1);      
+    --text-secondary: #626262;
+    --text-tertiary: rgba(130, 130, 130, 1);
+
+    --background-0: rgba(255, 255, 255, 1);   
+    --background-1: #F6F6F6;    
+    --background-2: #E6E6E6;
+    --background-3: rgba(240, 240, 240, 1);
+  
+
+
+    --border: #E6E6E6;  
+
+
+    /* warning / error / success */
+
+    --green-default: #00c583;
+    --green-hover: rgba(76, 175, 80, 0.8);
+    --green-active: rgba(76, 175, 80, 0.6);
+    --green-stroke: rgba(76, 175, 80, 0.3);
+    --green-fill: rgba(76, 175, 80, 0.15);
+  
+    --yellow-default: rgba(255, 193, 7, 1);
+    --yellow-hover: rgba(255, 193, 7, 0.8);
+    --yellow-active: rgba(255, 193, 7, 0.6);
+    --yellow-stroke: rgba(255, 193, 7, 0.3);
+    --yellow-fill: rgba(255, 193, 7, 0.15);
+  
+    --orange-default: rgba(255, 87, 34, 1);
+    --orange-hover: rgba(255, 87, 34, 0.8);
+    --orange-active: rgba(255, 87, 34, 0.6);
+    --orange-stroke: rgba(255, 87, 34, 0.3);
+    --orange-fill: rgba(255, 87, 34, 0.15);
+  
+    --red-default: rgb(231 0 41);
+    --red-hover: rgba(244, 67, 54, 0.8);
+    --red-active: rgba(244, 67, 54, 0.6);
+    --red-stroke: rgba(244, 67, 54, 0.3);
+    --red-fill: rgba(244, 67, 54, 0.15);
+}
+  
+

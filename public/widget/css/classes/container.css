@@ -1,0 +1,34 @@
+.container-xs 
+{
+    max-width: 540px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.container-sm 
+{
+    max-width: 720px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.container-md 
+{
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.container-lg 
+{
+    max-width: 1140px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.container-xl 
+{
+    max-width: 1440px;
+    width: 100%;
+    margin: 0 auto;
+}

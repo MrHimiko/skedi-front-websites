@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '@utils/api';
 
@@ -15,6 +15,11 @@ const route = useRoute();
 const organizationSlug = route.params.organizationSlug;
 const eventSlug = route.params.eventSlug;
 
+// Check if embedded
+const isEmbedded = computed(() => route.query.embedded === 'true');
+const embedTheme = computed(() => route.query.theme || 'light');
+const hideHeader = computed(() => route.query.hideHeader === 'true');
+
 // Define view state (CALENDAR, FORM, CONFIRMATION)
 const viewState = ref('CALENDAR');
 
@@ -29,6 +34,54 @@ const selectedTime = ref(null);
 const selectedSlotData = ref(null);
 const selectedDuration = ref(30);
 const selectedTimezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+// Height observer for embedded mode
+let resizeObserver = null;
+
+// Send height updates when embedded
+const sendHeightUpdate = () => {
+    if (isEmbedded.value && window.parent) {
+        const height = document.body.scrollHeight;
+        window.parent.postMessage({
+            type: 'skedi-resize',
+            height: height,
+            widgetId: window.location.search
+        }, '*');
+    }
+};
+
+// Setup embedded mode
+onMounted(() => {
+    if (isEmbedded.value) {
+        // Add embedded class to body
+        document.body.classList.add('skedi-embedded');
+        if (embedTheme.value === 'dark') {
+            document.body.classList.add('skedi-dark-theme');
+        }
+        
+        // Initial height update
+        setTimeout(sendHeightUpdate, 100);
+        
+        // Watch for height changes
+        resizeObserver = new ResizeObserver(sendHeightUpdate);
+        resizeObserver.observe(document.body);
+        
+        // Also send height on view state changes
+        watch(viewState, () => {
+            setTimeout(sendHeightUpdate, 100);
+        });
+    }
+});
+
+// Cleanup
+onUnmounted(() => {
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+    }
+    if (isEmbedded.value) {
+        document.body.classList.remove('skedi-embedded', 'skedi-dark-theme');
+    }
+});
 
 // Calculate timezone difference in hours between UTC and selected timezone
 const getTimezoneOffset = (timezone) => {
@@ -240,6 +293,15 @@ const handleFormSubmit = async (formData) => {
             
             // Transition to confirmation view
             viewState.value = 'CONFIRMATION';
+            
+            // Notify parent window if embedded
+            if (isEmbedded.value && window.parent) {
+                window.parent.postMessage({
+                    type: 'skedi-booking-complete',
+                    bookingData: response.data,
+                    widgetId: window.location.search
+                }, '*');
+            }
         } else {
             // Handle API error with more details
             console.error('API Error:', response);
@@ -366,7 +428,7 @@ fetchEventData();
 </script>
 
 <template>
-    <div class="event-page">
+    <div class="event-page" :class="{ 'embedded': isEmbedded, 'dark-theme': embedTheme === 'dark' }">
         <!-- Loading and error states -->
         <div v-if="loading" class="loading-container">
             <div class="loader"></div>
@@ -458,6 +520,28 @@ fetchEventData();
     background-color: var(--background-1);
     color: var(--text-primary);
     padding: 20px;
+}
+
+/* Embedded mode styles */
+.event-page.embedded {
+    min-height: auto;
+    padding: 0;
+    background-color: transparent;
+}
+
+.event-page.embedded .booking-content {
+    max-width: 100%;
+}
+
+/* Dark theme support */
+.event-page.dark-theme {
+    background-color: #1a1a1a;
+    color: #ffffff;
+}
+
+.event-page.dark-theme .booking-column {
+    background-color: #2a2a2a;
+    border-color: #3a3a3a;
 }
 
 .loading-container, .error-container {
@@ -563,5 +647,26 @@ button:hover {
 .error-container p {
     color: var(--text-secondary);
     margin-bottom: 20px;
+}
+</style>
+
+<style>
+/* Global styles for embedded mode - not scoped */
+body.skedi-embedded {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+}
+
+body.skedi-embedded .header-navigation,
+body.skedi-embedded .footer,
+body.skedi-embedded .sidebar {
+    display: none !important;
+}
+
+body.skedi-dark-theme {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
 }
 </style>
