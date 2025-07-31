@@ -35,6 +35,9 @@ let fetchDebounceTimer = null;
 const slotsCache = ref({});
 const initialLoadComplete = ref(false);
 
+// Add flag to track if we're loading from initial-load
+const isInitialLoadData = ref(false);
+
 // Create cache key generator
 const getCacheKey = (date, duration, timezone) => {
     const dateStr = date.toISOString().split('T')[0];
@@ -81,94 +84,28 @@ const calendarAvailability = computed(() => {
     
     // Current month being viewed
     const currentMonth = selectedDate.value ? new Date(selectedDate.value) : new Date();
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    
-    // Generate availability for a broader range around the current month
-    const startDate = new Date(year, month - 1, 1); // Previous month
-    const endDate = new Date(year, month + 2, 0); // Next month's last day
-    
     const availability = [];
-    const currentDate = new Date(startDate);
     
-    // Calculate timezone offset once
-    const timezoneOffsetHours = getTimezoneOffset(selectedTimezone.value);
+    // Check next 30 days for availability
+    const today = new Date();
+    const currentDate = new Date(today);
     
-    while (currentDate <= endDate) {
+    for (let i = 0; i < 30; i++) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const dayOfWeek = currentDate.getDay();
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = dayNames[dayOfWeek];
         
-        // Check which day of the week in the selected timezone
-        let adjustedDate = new Date(currentDate);
-        
-        // If timezone offset might change the day, we need to check adjacent days too
-        const localDayIndex = adjustedDate.getDay();
-        const dayName = dayNames[localDayIndex];
+        // Check if this day is enabled in the schedule
         const daySchedule = event.value.schedule[dayName];
+        const isEnabled = daySchedule && daySchedule.enabled === true;
         
-        // Also check if previous or next day's schedule might affect this date
-        const prevDayName = dayNames[(localDayIndex + 6) % 7];
-        const prevDaySchedule = event.value.schedule[prevDayName];
-        const nextDayName = dayNames[(localDayIndex + 1) % 7];
-        const nextDaySchedule = event.value.schedule[nextDayName];
-        
-        let isAvailable = false;
-        
-        // Check if the current day is enabled
-        const currentDayEnabled = daySchedule && daySchedule.enabled;
-        
-        // For positive timezone offsets (e.g., Europe), check if previous day's late hours spill into this day
-        if (timezoneOffsetHours > 0 && prevDaySchedule && prevDaySchedule.enabled) {
-            // Check if previous day has late hours that become this day in user's timezone
-            if (prevDaySchedule.start) {
-                const [prevHour] = prevDaySchedule.start.split(':').map(Number);
-                if (prevHour + timezoneOffsetHours >= 24) {
-                    isAvailable = true;
-                }
-            }
-        }
-        
-        // For negative timezone offsets (e.g., Americas), check if next day's early hours spill into this day
-        if (timezoneOffsetHours < 0 && nextDaySchedule && nextDaySchedule.enabled) {
-            // Check if next day has early hours that become this day in user's timezone
-            if (nextDaySchedule.end) {
-                const [nextEndHour] = nextDaySchedule.end.split(':').map(Number);
-                if (nextEndHour + timezoneOffsetHours < 0) {
-                    isAvailable = true;
-                }
-            }
-        }
-        
-        // The current day is available based on its schedule
-        if (currentDayEnabled) {
-            if (daySchedule.start && daySchedule.end) {
-                // Check if any part of the schedule falls within the user's day
-                const [startHour] = daySchedule.start.split(':').map(Number);
-                const [endHour] = daySchedule.end.split(':').map(Number);
-                
-                // Adjust hours to user timezone
-                const userStartHour = startHour + timezoneOffsetHours;
-                const userEndHour = endHour + timezoneOffsetHours;
-                
-                // If the schedule crosses into this day in user timezone
-                if ((userStartHour < 24 && userEndHour > 0) || 
-                    (userStartHour < 0 && userEndHour > 0) ||
-                    (userStartHour < 24 && userEndHour > 24)) {
-                    isAvailable = true;
-                }
-            } else {
-                // If no start time specified, assume it's just enabled
-                isAvailable = true;
-            }
-        }
-        
-        // The current day's schedule
-        if (currentDayEnabled) {
-            isAvailable = true;
-        }
+        // Check if we have slots data for this date
+        const hasSlots = availableSlots.value[dateStr] && availableSlots.value[dateStr].length > 0;
         
         availability.push({
             date: new Date(currentDate),
-            available: isAvailable
+            available: isEnabled || hasSlots
         });
         
         // Move to next day
@@ -189,25 +126,41 @@ const bookingData = ref({
 
 // Handle date selection
 const handleDateSelected = async (date) => {
-    console.log('handleDateSelected called with date:', date.toISOString().split('T')[0]);
+    console.log('=== handleDateSelected START ===');
+    console.log('Called with date:', date.toISOString().split('T')[0]);
     console.log('initialLoadComplete:', initialLoadComplete.value);
     console.log('Current selectedDate:', selectedDate.value?.toISOString().split('T')[0]);
+    console.log('availableSlots:', Object.keys(availableSlots.value));
+    
+    // Log the call stack to see where this is being called from
+    console.trace('handleDateSelected call stack');
     
     // Skip if initial load is not complete yet
     if (!initialLoadComplete.value) {
-        console.log('Skipping date selection - initial load not complete');
+        console.log('SKIPPING - initial load not complete');
         return;
     }
     
+    const dateStr = date.toISOString().split('T')[0];
+    
     // Check if this is the same date that's already selected and has slots
     if (selectedDate.value && isSameDay(selectedDate.value, date)) {
-        const dateStr = date.toISOString().split('T')[0];
-        if (availableSlots.value[dateStr]) {
-            console.log('Slots already loaded for this date, skipping fetch');
+        if (availableSlots.value[dateStr] && availableSlots.value[dateStr].length > 0) {
+            console.log('SKIPPING - Same date already has slots');
             return;
         }
     }
     
+    // Check if we already have slots for this date
+    if (availableSlots.value[dateStr] && 
+        availableSlots.value[dateStr].length > 0 && 
+        !availableSlots.value[dateStr].includes('loading')) {
+        console.log('SKIPPING - Slots already available for this date');
+        selectedDate.value = date;
+        return;
+    }
+    
+    console.log('PROCEEDING to update selected date and fetch slots');
     selectedDate.value = date;
     
     // Clear any pending fetch
@@ -217,9 +170,11 @@ const handleDateSelected = async (date) => {
     
     // Debounce the API call
     fetchDebounceTimer = setTimeout(async () => {
+        console.log('=== DEBOUNCED fetchAvailableSlotsForDate CALL ===');
         await fetchAvailableSlotsForDate(date);
-    }, 100); // 100ms debounce
+    }, 100);
 };
+
 
 // Helper function to check if two dates are the same day
 const isSameDay = (date1, date2) => {
@@ -379,6 +334,7 @@ const fetchAvailableSlotsForDate = async (date) => {
         return {};
     }
 };
+const calendarReady = ref(false);
 
 // Fetch event data AND initial slots with combined endpoint
 const fetchEventData = async () => {
@@ -433,6 +389,9 @@ const fetchEventData = async () => {
                 
                 loading.value = false;
                 initialLoadComplete.value = true;
+                // Now allow CalendarView to mount
+                calendarReady.value = true;
+                
                 return; // Successfully loaded with combined endpoint
             }
         } catch (combinedError) {
@@ -463,20 +422,24 @@ const fetchEventData = async () => {
         
         loading.value = false;
         initialLoadComplete.value = true;
-        
-        // Let CalendarView select the initial date, which will trigger fetchAvailableSlotsForDate
+        // Allow CalendarView to mount and auto-select in fallback mode
+        calendarReady.value = true;
         
     } catch (err) {
         console.error('Error fetching data:', err);
         error.value = err.message || 'An error occurred';
         loading.value = false;
+        initialLoadComplete.value = true;
+        calendarReady.value = true; // Allow mounting even on error
     }
 };
+
 
 // Call the fetch function
 fetchEventData();
 </script>
 
+<!-- KEEP YOUR ORIGINAL TEMPLATE AND STYLES EXACTLY AS THEY ARE -->
 <template>
     <div class="event-page">
         <!-- Loading and error states -->
@@ -510,7 +473,7 @@ fetchEventData();
                 <!-- Middle column: Calendar -->
                 <div class="booking-column calendar-column">
                     <CalendarView 
-                        v-if="!loading && event"
+                        v-if="calendarReady && event"
                         :event="event"
                         @dateSelected="handleDateSelected"
                         :selectedDate="selectedDate"
@@ -648,7 +611,7 @@ fetchEventData();
 /* Booking grid layout */
 .booking-grid {
     display: grid;
-    grid-template-columns: 350px 400px 1fr;
+    grid-template-columns: 250px 1fr 250px ;
     gap: 24px;
     height: calc(100vh - 48px);
     min-height: 600px;
@@ -667,15 +630,9 @@ fetchEventData();
     margin: 0 auto;
 }
 
-/* Responsive design */
-@media (max-width: 1200px) {
-    .booking-grid {
-        grid-template-columns: 300px 350px 1fr;
-        gap: 16px;
-    }
-}
 
-@media (max-width: 1024px) {
+
+@media (max-width: 991px) {
     .booking-grid {
         grid-template-columns: 1fr;
         height: auto;

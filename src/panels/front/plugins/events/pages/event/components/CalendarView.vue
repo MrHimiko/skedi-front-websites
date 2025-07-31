@@ -17,6 +17,11 @@ const props = defineProps({
     timezone: {
         type: String,
         default: ''
+    },
+    // ADD THIS NEW PROP
+    skipAutoSelect: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -147,23 +152,25 @@ function isSameDay(date1, date2) {
 function selectDate(date) {
     if (!date) return;
     
+    console.log('=== CalendarView selectDate START ===');
+    console.log('Selecting date:', date.toISOString().split('T')[0]);
+    console.log('props.selectedDate:', props.selectedDate?.toISOString().split('T')[0]);
+    console.log('props.skipAutoSelect:', props.skipAutoSelect);
+    
     // Create a fixed date at noon to avoid timezone issues
     const selectedDate = new Date(
         date.getFullYear(),
         date.getMonth(),
         date.getDate(),
-        12 // Set to noon to avoid timezone issues
+        12
     );
     
     // Check if this day is enabled in the schedule
     if (hasAvailableSlots(selectedDate)) {
-        // Check if it's already the selected date to prevent duplicate emissions
-        if (!props.selectedDate || !isSameDay(props.selectedDate, selectedDate)) {
-            console.log('CalendarView: Emitting dateSelected for', selectedDate.toISOString().split('T')[0]);
-            emit('dateSelected', selectedDate);
-        } else {
-            console.log('CalendarView: Date already selected, not emitting', selectedDate.toISOString().split('T')[0]);
-        }
+        console.log('CalendarView: EMITTING dateSelected');
+        emit('dateSelected', selectedDate);
+    } else {
+        console.log('CalendarView: Date has no available slots');
     }
 }
 
@@ -188,24 +195,47 @@ watch(() => props.timezone, () => {
 });
 
 // Select initial date on mount
+// Complete onMounted function for CalendarView.vue
 onMounted(() => {
+    console.log('=== CalendarView onMounted START ===');
+    console.log('isInitialized:', isInitialized.value);
+    console.log('props.skipAutoSelect:', props.skipAutoSelect);
+    console.log('props.selectedDate:', props.selectedDate);
+    
     // Prevent duplicate initialization
-    if (isInitialized.value) return;
+    if (isInitialized.value) {
+        console.log('Already initialized, returning');
+        return;
+    }
     isInitialized.value = true;
     
     // Add a small delay to ensure all props are properly set
     setTimeout(() => {
-        // If there's already a selected date, just update the month view
-        if (props.selectedDate) {
-            currentMonth.value = new Date(props.selectedDate);
-            // Don't emit dateSelected - parent already has date and slots
+        console.log('=== CalendarView onMounted setTimeout ===');
+        console.log('props.skipAutoSelect:', props.skipAutoSelect);
+        console.log('props.selectedDate:', props.selectedDate);
+        
+        // If skipAutoSelect is true or there's already a selected date, just update the month view
+        if (props.skipAutoSelect || props.selectedDate) {
+            console.log('SKIPPING auto-select because:');
+            console.log('- skipAutoSelect:', props.skipAutoSelect);
+            console.log('- selectedDate exists:', !!props.selectedDate);
+            
+            if (props.selectedDate) {
+                currentMonth.value = new Date(props.selectedDate);
+                console.log('Updated currentMonth to:', currentMonth.value.toISOString().split('T')[0]);
+            }
             return;
         }
         
+        console.log('PROCEEDING with auto-select - no date pre-selected');
+        
         // Only auto-select if no date is selected yet
         const today = new Date();
+        console.log('Checking if today has slots:', today.toISOString().split('T')[0]);
         
         if (hasAvailableSlots(today)) {
+            console.log('Today has available slots, selecting it');
             // Create a fixed version of today at noon
             const fixedToday = new Date(
                 today.getFullYear(),
@@ -215,18 +245,26 @@ onMounted(() => {
             );
             selectDate(fixedToday);
         } else {
+            console.log('Today has no slots, looking for next available day');
             const nextAvailableDay = findNextAvailableDay(today);
+            
             if (nextAvailableDay) {
+                console.log('Found next available day:', nextAvailableDay.toISOString().split('T')[0]);
                 selectDate(nextAvailableDay);
+                
                 // Update current month if next available day is in a different month
                 if (nextAvailableDay.getMonth() !== today.getMonth() ||
                     nextAvailableDay.getFullYear() !== today.getFullYear()) {
                     currentMonth.value = new Date(nextAvailableDay);
+                    console.log('Updated month view to:', currentMonth.value.toISOString().split('T')[0]);
                 }
+            } else {
+                console.log('No available days found in the next 30 days');
             }
         }
     }, 0);
 });
+
 
 // Update the current month view when selected date changes
 watch(() => props.selectedDate, (newDate) => {
@@ -377,7 +415,7 @@ watch(() => props.selectedDate, (newDate) => {
 }
 
 .calendar-day.selected {
-    background-color: var(--brand-blue);
+    background-color: var(--brand-blue)!important;
 }
 
 .calendar-day.selected .day-number {
@@ -405,7 +443,7 @@ watch(() => props.selectedDate, (newDate) => {
 .calendar-day.today::after {
     content: '';
     position: absolute;
-    bottom: 2px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
     width: 4px;
