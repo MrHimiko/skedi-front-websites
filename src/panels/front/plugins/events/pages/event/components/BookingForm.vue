@@ -96,31 +96,37 @@ const formApiEndpoint = computed(() => {
 
 // Setup email listener
 function setupEmailListener() {
-    // Use MutationObserver to wait for the form to render
+    // Reset state
+    emailCaptured = false;
+    
+    // Use MutationObserver to detect when form fields are added
     const observer = new MutationObserver(() => {
         const emailInput = document.querySelector('#field-system_contact_email input');
-        if (emailInput) {
-            observer.disconnect();
+        
+        if (emailInput && !emailInput.hasAttribute('data-lead-listener')) {
+            // Mark as having listener to avoid duplicates
+            emailInput.setAttribute('data-lead-listener', 'true');
             
-            // Add change listener
-            emailInput.addEventListener('input', (e) => {
-                const email = e.target.value;
+            // Listen for changes
+            emailInput.addEventListener('blur', () => {
+                const email = emailInput.value;
                 
-                // Clear previous timeout
-                clearTimeout(captureTimeout);
-                
-                // Validate email
-                if (email && email.includes('@') && email.includes('.') && !emailCaptured) {
+                // Only capture if valid email and not already captured
+                if (email && email.includes('@') && !emailCaptured) {
                     captureTimeout = setTimeout(() => {
                         // Get name if available
                         const nameInput = document.querySelector('#field-system_contact_name input');
                         const name = nameInput ? nameInput.value : null;
                         
-                        // Call API
-                        PotentialLeadsService.captureLead(props.event.slug, {
-                            email: email,
-                            name: name
-                        }).then(() => {
+                        // Call API with organization and event IDs
+                        PotentialLeadsService.captureLead(
+                            props.organization.id,  // Use organization ID from props
+                            props.event.id,         // Use event ID from props
+                            {
+                                email: email,
+                                name: name
+                            }
+                        ).then(() => {
                             emailCaptured = true;
                             console.log('Lead captured:', email);
                         });
