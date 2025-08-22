@@ -4,7 +4,7 @@ import path from 'path'
 
 export default defineConfig({
 
-    base: '/front/',
+
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
@@ -39,9 +39,10 @@ export default defineConfig({
     server: {
         hmr: true,
         host: '0.0.0.0',
-        allowedHosts: ['app.skedi.com', 'front.skedi.com', 'dev.skedi.com']
+        port: 5175,
+        allowedHosts: ['skedi.com']
     },
     preview: {
-        port: 5173,
+        port: 5175,
     }
 })

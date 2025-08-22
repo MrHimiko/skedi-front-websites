@@ -14,21 +14,30 @@ export default class
     routes()
     {
 
+        // Organization page route
         this.router.addRoute({
-            path: '/test',
-            name: 'FrontHome',
-            component: () => import('./pages/home/view.vue'),
+            path: '/:organizationSlug',
+            name: 'OrganizationPage',
+            component: () => import('./pages/organization/view.vue'),
+            props: true
         });
 
-
+        // Team page route  
         this.router.addRoute({
-            path: '/:organizationSlug/:eventSlug',
+            path: '/:organizationSlug/team/:teamSlug',
+            name: 'TeamPage',
+            component: () => import('./pages/team/view.vue'),
+            props: true
+        });
+
+        // Event page route (existing)
+        this.router.addRoute({
+            path: '/:organizationSlug/schedule/:eventSlug',
             name: 'EventPage',
             component: () => import('./pages/event/view.vue'),
+            props: true
         });
 
         console.log('All routes:', this.router.getRoutes());
-
     }
-
 }
