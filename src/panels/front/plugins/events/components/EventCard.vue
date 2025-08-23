@@ -107,24 +107,23 @@ const formatDate = (dateString) => {
 
 <style scoped>
 .event-card {
-    background: #1a1a1a;
-    border: 1px solid #333;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
     border-radius: 12px;
-    padding: 24px;
+    padding: 20px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 200px;
+    min-height: 160px;
 }
 
 .event-card:hover {
-    background: #222;
-    border-color: #2196F3;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(33, 150, 243, 0.15);
+    border-color: #d1d5db;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
 }
 
 .event-card-content {
@@ -132,49 +131,58 @@ const formatDate = (dateString) => {
     flex-direction: column;
     height: 100%;
     position: relative;
-    z-index: 1;
 }
 
 .event-header {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 12px;
+    align-items: center;
     gap: 12px;
+    margin-bottom: 12px;
+}
+
+.event-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: #f0f9ff;
+    border-radius: 8px;
+    color: #3b82f6;
+    flex-shrink: 0;
+}
+
+.event-card:hover .event-icon {
+    background: #dbeafe;
+    color: #2563eb;
 }
 
 .event-name {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 600;
-    color: #fff;
+    color: #111827;
     margin: 0;
     line-height: 1.3;
     flex: 1;
 }
 
-.event-icon {
-    color: #2196F3;
-    flex-shrink: 0;
-    opacity: 0.7;
-}
-
 .event-description {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     flex: 1;
 }
 
 .event-description p {
-    color: #ccc;
-    font-size: 14px;
-    line-height: 1.5;
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.4;
     margin: 0;
 }
 
 .event-details {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .detail-item {
@@ -184,13 +192,16 @@ const formatDate = (dateString) => {
 }
 
 .detail-icon {
-    color: #666;
+    color: #9ca3af;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
 }
 
 .detail-text {
-    font-size: 13px;
-    color: #888;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
 }
 
 .event-footer {
@@ -201,42 +212,57 @@ const formatDate = (dateString) => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(33, 150, 243, 0.1);
-    border: 1px solid rgba(33, 150, 243, 0.2);
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 12px 16px;
-    color: #2196F3;
+    padding: 10px 14px;
+    color: #475569;
     font-weight: 500;
-    font-size: 14px;
-    transition: all 0.3s ease;
+    font-size: 13px;
+    transition: all 0.2s ease;
 }
 
 .event-card:hover .book-button {
-    background: rgba(33, 150, 243, 0.15);
-    border-color: rgba(33, 150, 243, 0.3);
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
 }
 
 .book-arrow {
-    transition: transform 0.3s ease;
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    color: #94a3b8;
 }
 
 .event-card:hover .book-arrow {
-    transform: translateX(3px);
+    transform: translateX(2px);
+    color: #64748b;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
     .event-card {
-        padding: 20px;
-        min-height: 180px;
+        padding: 16px;
+        min-height: 140px;
     }
 
     .event-name {
-        font-size: 18px;
+        font-size: 15px;
     }
 
     .event-details {
-        margin-bottom: 16px;
+        margin-bottom: 12px;
+        gap: 4px;
+    }
+
+    .detail-text {
+        font-size: 11px;
+    }
+
+    .book-button {
+        padding: 8px 12px;
+        font-size: 12px;
     }
 }
 </style>

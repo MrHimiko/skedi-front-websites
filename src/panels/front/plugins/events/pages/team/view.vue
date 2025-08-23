@@ -50,16 +50,18 @@
                 </div>
             </div>
 
-            <!-- Sub-teams Section -->
+            <!-- Sub-teams Section with Hierarchy -->
+            <!-- Sub-teams Section with Tree View -->
             <div class="sub-teams-section" v-if="team.sub_teams && team.sub_teams.length > 0">
                 <h2 class="section-title">Sub-teams</h2>
-                <div class="teams-grid">
-                    <TeamCard
-                        v-for="subTeam in team.sub_teams"
+                <div class="teams-tree">
+                    <TreeItem
+                        v-for="subTeam in subTeamsHierarchy" 
                         :key="subTeam.id"
                         :team="subTeam"
                         :organization-slug="organizationSlug"
-                        @click="goToTeam(subTeam.slug)"
+                        :level="0"
+                        @click="goToTeam"
                     />
                 </div>
             </div>
@@ -81,6 +83,12 @@
             <!-- Empty States -->
             <div v-if="(!team.sub_teams || team.sub_teams.length === 0) && (!team.events || team.events.length === 0)" class="empty-state">
                 <div class="empty-content">
+                    <div class="empty-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
                     <h3>No Content Available</h3>
                     <p>This team doesn't have any sub-teams or events yet.</p>
                 </div>
@@ -90,11 +98,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import teamService from '../../js/team-service.js';
-import TeamCard from '../../components/TeamCard.vue';
-import EventCard from '../../components/EventCard.vue';
+import teamService from '@front_events/js/team-service.js';
+import TeamCard from '@front_events/components/TeamCard.vue';
+import EventCard from '@front_events/components/EventCard.vue';
+import TreeItem from '@front_events/components/TreeItem.vue';
 
 const props = defineProps({
     organizationSlug: {
@@ -105,6 +114,41 @@ const props = defineProps({
         type: String,
         required: true
     }
+});
+
+// Computed - Build sub-teams hierarchy
+const subTeamsHierarchy = computed(() => {
+    if (!team.value?.sub_teams) return [];
+    
+    // Create a map for quick lookup
+    const teamsMap = new Map();
+    const rootTeams = [];
+    
+    // First pass: create all team objects
+    team.value.sub_teams.forEach(subTeam => {
+        teamsMap.set(subTeam.id, { ...subTeam, children: [] });
+    });
+    
+    // Second pass: build hierarchy
+    team.value.sub_teams.forEach(subTeam => {
+        const teamNode = teamsMap.get(subTeam.id);
+        
+        if (subTeam.parent_team_id && subTeam.parent_team_id !== team.value.id) {
+            // This sub-team has a parent that's also a sub-team
+            const parent = teamsMap.get(subTeam.parent_team_id);
+            if (parent) {
+                parent.children.push(teamNode);
+            } else {
+                // Parent not found in sub-teams, treat as root
+                rootTeams.push(teamNode);
+            }
+        } else {
+            // This is a direct child of the current team
+            rootTeams.push(teamNode);
+        }
+    });
+    
+    return rootTeams;
 });
 
 const router = useRouter();
@@ -122,7 +166,7 @@ const fetchTeam = async () => {
 
         const response = await teamService.getBySlug(props.organizationSlug, props.teamSlug);
         
-        if (response.success) {
+        if (response && response.success && response.data) {
             team.value = response.data;
         } else {
             error.value = response.message || 'Failed to load team';
@@ -168,40 +212,9 @@ onMounted(() => {
 <style scoped>
 .team-page {
     min-height: 100vh;
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-/* Breadcrumb */
-.breadcrumb {
-    margin-bottom: 30px;
-    padding: 15px 0;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-size: 14px;
-}
-
-.breadcrumb-item {
-    color: #888;
-    text-decoration: none;
-    transition: color 0.2s;
-}
-
-.breadcrumb-item:hover {
-    color: #fff;
-}
-
-.breadcrumb-separator {
-    color: #666;
-    margin: 0 5px;
-}
-
-.breadcrumb-current {
-    color: #fff;
-    font-weight: 500;
+    background-color: #fafafa;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Loading State */
@@ -210,18 +223,23 @@ onMounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
-    color: #fff;
+    min-height: 200px;
+    gap: 16px;
 }
 
 .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
-    border-top: 3px solid #fff;
+    width: 32px;
+    height: 32px;
+    border: 2px solid #f3f4f6;
+    border-top: 2px solid #3b82f6;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+}
+
+.loading-container p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 14px;
 }
 
 @keyframes spin {
@@ -232,171 +250,233 @@ onMounted(() => {
 /* Error State */
 .error-container {
     display: flex;
-    justify-content: center;
     align-items: center;
-    min-height: 400px;
+    justify-content: center;
+    min-height: 200px;
+    padding: 24px;
 }
 
 .error-message {
     text-align: center;
-    color: #ff6b6b;
-    padding: 40px;
-    border: 1px solid #ff6b6b;
-    border-radius: 8px;
-    background: rgba(255, 107, 107, 0.1);
+    max-width: 400px;
+    padding: 32px;
+    background: #ffffff;
+    border: 1px solid #fee2e2;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .error-message h2 {
-    margin: 0 0 10px 0;
-    font-size: 24px;
+    color: #dc2626;
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 600;
 }
 
 .error-message p {
-    margin: 0 0 20px 0;
-    opacity: 0.8;
+    color: #6b7280;
+    margin: 0 0 24px;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .retry-btn {
-    background: #ff6b6b;
+    background-color: #3b82f6;
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
+    padding: 8px 16px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
     transition: background-color 0.2s;
 }
 
 .retry-btn:hover {
-    background: #ff5252;
+    background-color: #2563eb;
+}
+
+/* Team Content */
+.team-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.breadcrumb-item {
+    color: #6b7280;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.breadcrumb-item:hover {
+    color: #374151;
+}
+
+.breadcrumb-separator {
+    color: #d1d5db;
+    margin: 0 4px;
+}
+
+.breadcrumb-current {
+    color: #111827;
+    font-weight: 600;
 }
 
 /* Team Header */
 .team-header {
-    margin-bottom: 60px;
-    padding: 40px 0;
-    border-bottom: 1px solid #333;
-}
-
-.team-info {
-    max-width: 800px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .team-title {
-    font-size: 48px;
-    font-weight: bold;
-    color: #fff;
-    margin: 0 0 15px 0;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: #111827;
     line-height: 1.2;
 }
 
 .team-description {
-    font-size: 18px;
-    color: #ccc;
-    line-height: 1.6;
-    margin: 0 0 25px 0;
-    max-width: 600px;
+    font-size: 16px;
+    color: #6b7280;
+    margin: 0 0 24px;
+    line-height: 1.5;
 }
 
 .team-meta {
     display: flex;
-    gap: 40px;
-    margin-bottom: 20px;
+    gap: 32px;
 }
 
 .meta-item {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    text-align: left;
 }
 
 .meta-item .count {
-    font-size: 32px;
-    font-weight: bold;
-    color: #fff;
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
     line-height: 1;
 }
 
 .meta-item .label {
-    font-size: 14px;
-    color: #888;
-    margin-top: 5px;
+    font-size: 12px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
 }
 
 /* Sections */
 .section-title {
-    font-size: 32px;
-    font-weight: bold;
-    color: #fff;
-    margin: 0 0 30px 0;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    color: #111827;
 }
 
 .sub-teams-section,
 .events-section {
-    margin-bottom: 60px;
+    margin-bottom: 32px;
 }
 
-/* Grids */
 .teams-grid,
 .events-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
 }
 
 /* Empty State */
 .empty-state {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 300px;
-    margin-top: 60px;
+    text-align: center;
+    padding: 48px 24px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.empty-content {
-    text-align: center;
-    color: #666;
-    max-width: 400px;
+.empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background: #f3f4f6;
+    border-radius: 50%;
+    margin-bottom: 16px;
+    color: #9ca3af;
 }
 
 .empty-content h3 {
-    font-size: 24px;
-    color: #fff;
-    margin: 0 0 15px 0;
+    font-size: 18px;
+    color: #374151;
+    margin: 0 0 8px;
+    font-weight: 600;
 }
 
 .empty-content p {
-    font-size: 16px;
-    line-height: 1.6;
+    color: #6b7280;
+    font-size: 14px;
     margin: 0;
+    line-height: 1.5;
 }
 
-/* Responsive */
+/* Responsive Design */
 @media (max-width: 768px) {
     .team-page {
-        padding: 15px;
+        padding: 16px;
     }
-
-    .breadcrumb {
-        font-size: 13px;
+    
+    .team-header {
+        padding: 24px;
     }
-
+    
     .team-title {
-        font-size: 36px;
+        font-size: 24px;
     }
-
+    
+    .team-description {
+        font-size: 14px;
+    }
+    
     .team-meta {
-        justify-content: flex-start;
-        gap: 30px;
+        gap: 20px;
+        flex-direction: column;
     }
-
+    
+    .meta-item {
+        text-align: center;
+    }
+    
     .teams-grid,
     .events-grid {
         grid-template-columns: 1fr;
     }
-
+    
     .section-title {
-        font-size: 28px;
+        font-size: 18px;
+    }
+    
+    .breadcrumb {
+        font-size: 13px;
+        flex-wrap: wrap;
     }
 }
 </style>

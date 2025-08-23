@@ -6,7 +6,7 @@ export default {
      */
     async getBySlug(orgSlug, teamSlug) {
         try {
-            const response = await api.get(`public/organizations/${orgSlug}/teams/${teamSlug}`);
+            const response = await api.get(`public/teams/${orgSlug}/${teamSlug}`);
             return response;
         } catch (error) {
             console.error('Error fetching team:', error);
