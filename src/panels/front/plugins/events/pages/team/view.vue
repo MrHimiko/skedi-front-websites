@@ -50,21 +50,21 @@
                 </div>
             </div>
 
-            <!-- Sub-teams Section with Hierarchy -->
-            <!-- Sub-teams Section with Tree View -->
-            <div class="sub-teams-section" v-if="team.sub_teams && team.sub_teams.length > 0">
-                <h2 class="section-title">Sub-teams</h2>
-                <div class="teams-tree">
-                    <TreeItem
-                        v-for="subTeam in subTeamsHierarchy" 
-                        :key="subTeam.id"
-                        :team="subTeam"
-                        :organization-slug="organizationSlug"
-                        :level="0"
-                        @click="goToTeam"
-                    />
-                </div>
-            </div>
+
+        <!-- Sub-teams Section with Tree View -->
+        <div class="sub-teams-section" v-if="team.sub_teams && team.sub_teams.length > 0">
+            <h2 class="section-title">Sub-teams</h2>
+            <ul class="teams-tree">
+                <TreeItem
+                    v-for="subTeam in subTeamsHierarchy" 
+                    :key="subTeam.id"
+                    :team="subTeam"
+                    :organization-slug="organizationSlug"
+                    :level="0"
+                    @click="goToTeam"
+                />
+            </ul>
+        </div>
 
             <!-- Events Section -->
             <div class="events-section" v-if="team.events && team.events.length > 0">
@@ -290,6 +290,14 @@ onMounted(() => {
     font-size: 14px;
     font-weight: 500;
     transition: background-color 0.2s;
+}
+
+
+/* Teams Tree Structure */
+.teams-tree {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
 }
 
 .retry-btn:hover {

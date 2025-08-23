@@ -1,9 +1,12 @@
 <template>
-    <li class="tree-item" :class="{ 'is-root': level === 0 }">
+    <li class="tree-node">
         <div class="team-card" @click="handleClick">
             <div class="team-content">
                 <div class="team-icon">
-                    <svg  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg v-if="hasChildren" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6,9 12,15 18,9"/>
+                    </svg>
+                    <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="7" r="4"/>
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                     </svg>
@@ -31,14 +34,13 @@
             </div>
         </div>
         
-        <!-- Recursive children -->
+        <!-- Nested children as proper UL -->
         <ul v-if="hasChildren" class="tree-children">
-            <TreeItem
+            <TreeNode
                 v-for="child in team.children"
                 :key="child.id"
                 :team="child"
                 :organization-slug="organizationSlug"
-                :level="level + 1"
                 @click="$emit('click', $event)"
             />
         </ul>
@@ -56,10 +58,6 @@ const props = defineProps({
     organizationSlug: {
         type: String,
         required: true
-    },
-    level: {
-        type: Number,
-        default: 0
     }
 });
 
@@ -79,13 +77,50 @@ const handleClick = () => {
 </script>
 
 <style scoped>
-.tree-item {
+.tree-node {
     position: relative;
     list-style: none;
 }
 
+.tree-node::before {
+    /* Vertical line for parent connection */
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 50%;
+    width: 1px;
+    background: #e5e7eb;
+    z-index: 1;
+}
 
+.tree-node::after {
+    /* Horizontal line to card */
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 32px;
+    width: 20px;
+    height: 1px;
+    background: #e5e7eb;
+    z-index: 1;
+}
 
+.tree-node:first-child::before {
+    /* Remove top line for first child */
+    top: 32px;
+}
+
+.tree-node:last-child::before {
+    /* Remove bottom line for last child */
+    bottom: calc(100% - 32px);
+}
+
+/* Root level nodes (direct children of tree-list) don't need lines */
+.tree-list > .tree-node::before,
+.tree-list > .tree-node::after {
+    display: none;
+}
 
 .team-card {
     background: #ffffff;
@@ -96,6 +131,7 @@ const handleClick = () => {
     transition: all 0.2s ease;
     position: relative;
     z-index: 2;
+    margin-left: 0;
 }
 
 .team-card:hover {
@@ -104,23 +140,12 @@ const handleClick = () => {
     background: #fafbff;
 }
 
-/* Root level styling */
-.tree-item.is-root .team-card {
-    border-color: #3b82f6;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-}
-
-.tree-item.is-root .team-card:hover {
-    border-color: #2563eb;
-    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.15);
-}
-
 .team-content {
     display: flex;
     align-items: center;
-    padding: 8px;
+    padding: 12px 16px;
     gap: 12px;
-    min-height: 40px;
+    min-height: 60px;
 }
 
 .team-icon {
@@ -133,12 +158,6 @@ const handleClick = () => {
     border-radius: 6px;
     color: #6b7280;
     flex-shrink: 0;
-}
-
-/* Root level icon styling */
-.tree-item.is-root .team-icon {
-    background: #dbeafe;
-    color: #3b82f6;
 }
 
 .team-info {
@@ -187,32 +206,42 @@ const handleClick = () => {
     transform: translateX(2px);
 }
 
-.tree-item.is-root .team-arrow {
-    color: #93c5fd;
-}
-
-.tree-item.is-root .team-card:hover .team-arrow {
-    color: #3b82f6;
-}
-
+/* Nested children */
 .tree-children {
     list-style: none;
     margin: 0;
     padding: 0;
-    margin-left: 40px;
+    margin-left: 40px; /* This creates the indentation */
     position: relative;
 }
 
+/* Root level styling */
+.tree-list > .tree-node .team-card {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.tree-list > .tree-node .team-card:hover {
+    border-color: #2563eb;
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.15);
+}
+
+.tree-list > .tree-node .team-icon {
+    background: #dbeafe;
+    color: #3b82f6;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
     .tree-children {
         margin-left: 24px;
     }
     
-    .tree-item:not(.is-root)::before {
+    .tree-node::before {
         left: 12px;
     }
     
-    .tree-item:not(.is-root)::after {
+    .tree-node::after {
         left: 12px;
         width: 12px;
     }

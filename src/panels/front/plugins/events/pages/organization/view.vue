@@ -45,7 +45,7 @@
             <!-- Teams Section with Hierarchy -->
             <div class="teams-section" v-if="organization.teams && organization.teams.length > 0">
                 <h2 class="section-title">Teams</h2>
-                <div class="teams-tree">
+                <ul class="teams-tree">
                     <TreeItem
                         v-for="team in teamsHierarchy" 
                         :key="team.id"
@@ -54,7 +54,7 @@
                         :level="0"
                         @click="goToTeam"
                     />
-                </div>
+                </ul>
             </div>
 
             <!-- Events Section -->
