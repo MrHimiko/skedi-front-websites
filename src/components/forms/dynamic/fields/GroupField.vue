@@ -1,7 +1,5 @@
-<!-- File: src/components/forms/dynamic/fields/GroupField.vue -->
-
 <script setup>
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import DynamicField from './DynamicField.vue';
 import formConfigService from '../services/form-config.service';
 
@@ -26,24 +24,76 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+// Debug logging for group field
+console.log(`[GroupField] Setup for group ${props.field.id || props.field.name}:`, {
+    field: props.field,
+    formData: props.formData,
+    children: props.field.children
+});
+
+// Watch form data changes
+watch(() => props.formData, (newFormData) => {
+    console.log(`[GroupField] Form data changed for group ${props.field.id || props.field.name}:`, {
+        newFormData,
+        visibility: props.field.visibility
+    });
+}, { deep: true });
+
 // Check if group is visible
 const isVisible = computed(() => {
-    return formConfigService.checkFieldVisibility(props.field, props.formData);
+    const visible = formConfigService.checkFieldVisibility(props.field, props.formData);
+    
+    console.log(`[GroupField] Visibility check for ${props.field.id || props.field.name}:`, {
+        visible,
+        field: props.field,
+        formData: props.formData
+    });
+    
+    return visible;
 });
 
 // Get child fields
 const childFields = computed(() => {
     if (!props.field.children) return [];
     
-    return props.field.children
+    const children = props.field.children
         .map(childId => props.fieldMap.get(childId))
         .filter(field => field);
+        
+    console.log(`[GroupField] Child fields for ${props.field.id || props.field.name}:`, children.map(c => ({
+        id: c.id || c.name,
+        type: c.type,
+        label: c.label
+    })));
+    
+    return children;
 });
 
-// Handle child field updates
+// Handle child field updates - THIS IS THE KEY FUNCTION
 function handleFieldUpdate(fieldId, value) {
-    // Groups don't have their own value, they just pass through child updates
-    emit('update:modelValue', { fieldId, value });
+    console.log(`[GroupField] Child field update received:`, {
+        childFieldId: fieldId,
+        value,
+        groupId: props.field.id || props.field.name,
+        currentFormData: props.formData[fieldId],
+        willEmitObject: true
+    });
+    
+    // Groups emit an object with fieldId and value so the parent knows which child field to update
+    const updateObject = { fieldId, value };
+    
+    console.log(`[GroupField] Emitting update object:`, updateObject);
+    
+    emit('update:modelValue', updateObject);
+    
+    // Debug: Check if the event was actually emitted
+    setTimeout(() => {
+        console.log(`[GroupField] After emit - formData check:`, {
+            fieldId,
+            currentFormData: props.formData[fieldId],
+            expectedValue: value
+        });
+    }, 50);
 }
 </script>
 
@@ -60,13 +110,13 @@ function handleFieldUpdate(fieldId, value) {
             <div class="group-fields-grid">
                 <DynamicField
                     v-for="childField in childFields"
-                    :key="childField.id"
+                    :key="childField.id || childField.name"
                     :field="childField"
-                    :modelValue="formData[childField.id]"
-                    :errors="errors[childField.id] || []"
+                    :modelValue="formData[childField.id || childField.name]"
+                    :errors="errors[childField.id || childField.name] || []"
                     :formData="formData"
                     :fieldMap="fieldMap"
-                    @update:modelValue="(value) => handleFieldUpdate(childField.id, value)"
+                    @update:modelValue="(value) => handleFieldUpdate(childField.id || childField.name, value)"
                 />
             </div>
         </div>

@@ -1,5 +1,3 @@
-<!-- File: src/components/forms/dynamic/DynamicFormBuilder.vue -->
-
 <script setup>
 import { ref, computed, watch } from 'vue';
 import DynamicField from './fields/DynamicField.vue';
@@ -32,6 +30,24 @@ const props = defineProps({
 
 const emit = defineEmits(['updateField', 'submit']);
 
+// Debug logging
+console.log('[DynamicFormBuilder] Initial setup:', {
+    formConfig: props.formConfig,
+    processedFields: props.processedFields,
+    formData: props.formData
+});
+
+// Watch form data changes
+watch(() => props.formData, (newFormData, oldFormData) => {
+    console.log('[DynamicFormBuilder] Form data changed:', {
+        oldFormData,
+        newFormData,
+        changes: Object.keys(newFormData).filter(key => 
+            JSON.stringify(newFormData[key]) !== JSON.stringify(oldFormData?.[key])
+        )
+    });
+}, { deep: true });
+
 // Current step for multi-step forms
 const currentStep = ref(0);
 
@@ -50,9 +66,27 @@ const currentStepFields = computed(() => {
 
 // Get visible fields for current view
 const visibleFields = computed(() => {
-    return currentStepFields.value.filter(field => 
-        formConfigService.checkFieldVisibility(field, props.formData)
-    );
+    const fields = currentStepFields.value.filter(field => {
+        const isVisible = formConfigService.checkFieldVisibility(field, props.formData);
+        
+        console.log(`[DynamicFormBuilder] Field visibility check:`, {
+            fieldId: field.id || field.name,
+            fieldType: field.type,
+            isVisible,
+            hasVisibility: !!field.visibility,
+            formData: props.formData
+        });
+        
+        return isVisible;
+    });
+    
+    console.log('[DynamicFormBuilder] Visible fields:', fields.map(f => ({
+        id: f.id || f.name,
+        type: f.type,
+        label: f.label
+    })));
+    
+    return fields;
 });
 
 // Step navigation
@@ -109,18 +143,65 @@ function previousStep() {
     scrollToTop();
 }
 
+
+
+// Handle field update
 // Handle field update
 function handleFieldUpdate(fieldId, value) {
-    emit('updateField', fieldId, value);
+    console.log('[DynamicFormBuilder] Field update received:', {
+        fieldId,
+        oldValue: props.formData[fieldId],
+        newValue: value,
+        isObject: typeof value === 'object' && value !== null,
+        hasFieldId: typeof value === 'object' && value !== null && 'fieldId' in value
+    });
+    
+    // Handle updates from group fields (they come as objects with fieldId and value)
+    if (typeof value === 'object' && value !== null && value.fieldId && value.value !== undefined) {
+        console.log('[DynamicFormBuilder] Processing group field update:', {
+            originalFieldId: fieldId,
+            actualFieldId: value.fieldId,
+            actualValue: value.value
+        });
+        emit('updateField', value.fieldId, value.value);
+    } else {
+        // Handle direct field updates
+        console.log('[DynamicFormBuilder] Processing direct field update:', {
+            fieldId,
+            value
+        });
+        emit('updateField', fieldId, value);
+    }
 }
+
 
 // Handle form submission
 function handleSubmit() {
+    console.log('[DynamicFormBuilder] handleSubmit called');
+    console.log('[DynamicFormBuilder] hasSteps:', hasSteps.value);
+    console.log('[DynamicFormBuilder] isLastStep:', isLastStep.value);
+    console.log('[DynamicFormBuilder] submitting:', props.submitting);
+    
     if (hasSteps.value && !isLastStep.value) {
+        console.log('[DynamicFormBuilder] Going to next step');
         nextStep();
     } else {
+        console.log('[DynamicFormBuilder] Emitting submit event');
         emit('submit');
     }
+}
+
+// Handle button click directly (for debugging)
+function handleButtonClick(event) {
+    console.log('[DynamicFormBuilder] Submit button clicked:', event);
+    console.log('[DynamicFormBuilder] Event type:', event.type);
+    console.log('[DynamicFormBuilder] Event target:', event.target);
+    
+    // Prevent default form behavior
+    event.preventDefault();
+    event.stopPropagation();
+    
+    handleSubmit();
 }
 
 // Scroll to top of form
@@ -165,14 +246,14 @@ const showProgressBar = computed(() => {
             <div class="fields-grid">
                 <DynamicField
                     v-for="field in visibleFields"
-                    :key="field.id"
-                    :id="`field-${field.id}`"
+                    :key="field.id || field.name"
+                    :id="`field-${field.id || field.name}`"
                     :field="field"
-                    :modelValue="formData[field.id]"
-                    :errors="formErrors[field.id] || []"
+                    :modelValue="formData[field.id || field.name]"
+                    :errors="formErrors[field.id || field.name] || []"
                     :formData="formData"
                     :fieldMap="processedFields.fieldMap"
-                    @update:modelValue="(value) => handleFieldUpdate(field.id, value)"
+                    @update:modelValue="(value) => handleFieldUpdate(field.id || field.name, value)"
                 />
             </div>
         </div>
@@ -198,7 +279,7 @@ const showProgressBar = computed(() => {
                 v-if="!hasSteps || isLastStep"
                 :label="submitting ? 'Submitting...' : 'Submit'"
                 :loading="submitting"
-                @click="handleSubmit"
+                @click="handleButtonClick"
             />
         </div>
     </div>

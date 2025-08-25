@@ -42,14 +42,15 @@
         }
     });
     
-    // Important: Define the emits
-    const emit = defineEmits(['update:value', 'change', 'input']);
+    // IMPORTANT: Define all the emits that the dynamic form expects
+    const emit = defineEmits(['update:value', 'change', 'input', 'onInput', 'onChange', 'update:modelValue']);
     
     const refValue = ref(props.value);
     const refDisplay = ref(null);
     
     // Watch for value prop changes
     watch(() => props.value, (newValue) => {
+        console.log('[SelectComponent] Value prop changed:', { oldValue: refValue.value, newValue });
         refValue.value = newValue;
         
         // Update display value when value changes externally
@@ -63,27 +64,49 @@
     });
     
     function onClick(event, item, index) {
+        console.log('[SelectComponent] onClick called:', {
+            oldValue: refValue.value,
+            newValue: item.value,
+            item: item,
+            props: props
+        });
+        
         refValue.value = item.value;
         refDisplay.value = item.label;
         
-        // Emit the change to parent components
+        // Emit ALL possible event formats that different components might expect
         emit('update:value', item.value);
-        emit('change', item.value);
+        emit('change', event, item.value);  // This is what your SelectField expects
         emit('input', item.value);
+        emit('onInput', event, item.value);
+        emit('onChange', event, item.value);
+        emit('update:modelValue', item.value);
         
-        console.log('Select value changed to:', item.value);
+        console.log('[SelectComponent] All events emitted with value:', item.value);
     }
     
     // Handle input changes
     function handleInput(event, value) {
+        console.log('[SelectComponent] handleInput:', { event, value });
         emit('input', value);
+        emit('onInput', event, value);
+        emit('update:modelValue', value);
     }
     
     function handleChange(event, value) {
-        emit('change', value);
+        console.log('[SelectComponent] handleChange:', { event, value });
+        emit('change', event, value);
+        emit('onChange', event, value);
+        emit('update:modelValue', value);
     }
     
     onMounted(() => {
+        console.log('[SelectComponent] Mounted:', {
+            value: props.value,
+            options: props.options,
+            refValue: refValue.value
+        });
+        
         if(props.endpoint && props.value) {
             refDisplay.value = 'Loading...';
             

@@ -1,6 +1,5 @@
-
 <script setup>
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 
 // Import all field components
 import TextField from './TextField.vue';
@@ -43,6 +42,25 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
+// Debug logging for conditional fields
+console.log(`[DynamicField] Field ${props.field.id || props.field.name}:`, {
+    field: props.field,
+    modelValue: props.modelValue,
+    formData: props.formData,
+    hasVisibility: !!props.field.visibility
+});
+
+// Watch for form data changes that might affect visibility
+watch(() => props.formData, (newFormData) => {
+    if (props.field.visibility) {
+        console.log(`[DynamicField] Form data changed for field ${props.field.id || props.field.name}:`, {
+            newFormData,
+            visibility: props.field.visibility,
+            fieldValue: newFormData[props.field.id || props.field.name]
+        });
+    }
+}, { deep: true });
+
 // Map field types to components
 const fieldComponents = {
     text: TextField,
@@ -82,6 +100,12 @@ const fieldComponent = computed(() => {
 
 // Handle value updates
 function updateValue(value) {
+    console.log(`[DynamicField] Updating value for field ${props.field.id || props.field.name}:`, {
+        oldValue: props.modelValue,
+        newValue: value,
+        field: props.field
+    });
+    
     emit('update:modelValue', value);
 }
 
@@ -90,10 +114,91 @@ const colSpanClass = computed(() => {
     const span = props.field.colSpan || 12;
     return `col-span-${span}`;
 });
+
+// Check if this field should be visible based on visibility conditions
+const isVisible = computed(() => {
+    if (!props.field.visibility) {
+        console.log(`[DynamicField] Field ${props.field.id || props.field.name} has no visibility conditions - showing`);
+        return true;
+    }
+
+    const { logic, conditions } = props.field.visibility;
+    
+    console.log(`[DynamicField] Checking visibility for field ${props.field.id || props.field.name}:`, {
+        logic,
+        conditions,
+        formData: props.formData
+    });
+    
+    if (!conditions || conditions.length === 0) {
+        console.log(`[DynamicField] No conditions defined for field ${props.field.id || props.field.name} - showing`);
+        return true;
+    }
+    
+    const results = conditions.map(condition => {
+        const fieldValue = props.formData[condition.field];
+        let conditionResult = false;
+        
+        console.log(`[DynamicField] Checking condition:`, {
+            conditionField: condition.field,
+            fieldValue: fieldValue,
+            operator: condition.operator,
+            conditionValue: condition.value
+        });
+        
+        switch (condition.operator) {
+            case 'equals':
+                conditionResult = fieldValue === condition.value;
+                break;
+            case 'not_equals':
+                conditionResult = fieldValue !== condition.value;
+                break;
+            case 'contains':
+                conditionResult = fieldValue && fieldValue.includes && fieldValue.includes(condition.value);
+                break;
+            case 'greater_than':
+                conditionResult = Number(fieldValue) > Number(condition.value);
+                break;
+            case 'less_than':
+                conditionResult = Number(fieldValue) < Number(condition.value);
+                break;
+            case 'is_empty':
+                conditionResult = !fieldValue || fieldValue.length === 0;
+                break;
+            case 'is_not_empty':
+                conditionResult = fieldValue && fieldValue.length > 0;
+                break;
+            default:
+                conditionResult = true;
+                break;
+        }
+        
+        console.log(`[DynamicField] Condition result:`, {
+            condition,
+            fieldValue,
+            result: conditionResult
+        });
+        
+        return conditionResult;
+    });
+    
+    const finalResult = logic === 'all' 
+        ? results.every(r => r) 
+        : results.some(r => r);
+    
+    console.log(`[DynamicField] Final visibility result for field ${props.field.id || props.field.name}:`, {
+        logic,
+        results,
+        finalResult
+    });
+    
+    return finalResult;
+});
 </script>
 
 <template>
     <div 
+        v-if="isVisible"
         :class="[
             'dynamic-field',
             colSpanClass,
@@ -105,7 +210,9 @@ const colSpanClass = computed(() => {
             :is="fieldComponent"
             :field="field"
             :modelValue="modelValue"
-            :error="errors[0]"
+            :errors="errors"
+            :formData="formData"
+            :fieldMap="fieldMap"
             @update:modelValue="updateValue"
             v-bind="$attrs"
         />

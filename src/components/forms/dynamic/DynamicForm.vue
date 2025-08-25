@@ -6,6 +6,7 @@ import DynamicFormBuilder from './DynamicFormBuilder.vue';
 import formConfigService from './services/form-config.service';
 import formValidationService from './services/form-validation.service';
 import formSubmissionService from './services/form-submission.service';
+import { common } from '@utils/common';
 
 const props = defineProps({
     formId: {
@@ -50,7 +51,7 @@ let autoSaveTimer = null;
 
 // Load form configuration
 async function loadForm() {
-    console.log('DynamicForm loadForm called');
+    console.log('[DynamicForm] loadForm called');
     console.log('Form ID:', props.formId);
     console.log('API Endpoint:', props.apiEndpoint);
     
@@ -60,10 +61,13 @@ async function loadForm() {
         
         // Fetch form config
         const config = await formConfigService.getFormConfig(props.apiEndpoint);
+        console.log('[DynamicForm] Form config loaded:', config);
+        
         formConfig.value = config;
         
         // Process fields
         processedFields.value = formConfigService.processFormFields(config.fields);
+        console.log('[DynamicForm] Processed fields:', processedFields.value);
         
         // Load saved progress if available
         const savedProgress = formSubmissionService.loadProgress(props.formId);
@@ -73,6 +77,8 @@ async function loadForm() {
             formData.value = { ...props.initialData };
         }
         
+        console.log('[DynamicForm] Initial form data:', formData.value);
+        
         emit('load', config);
         
         // Start auto-save if enabled
@@ -81,7 +87,9 @@ async function loadForm() {
         }
         
     } catch (err) {
+        console.error('[DynamicForm] Error loading form:', err);
         error.value = err.message || 'Failed to load form';
+        common.notification('Failed to load form', false);
         emit('error', err);
     } finally {
         loading.value = false;
@@ -90,7 +98,16 @@ async function loadForm() {
 
 // Handle form field updates
 function updateField(fieldId, value) {
+    console.log('[DynamicForm] updateField called:', {
+        fieldId,
+        oldValue: formData.value[fieldId],
+        newValue: value,
+        currentFormData: formData.value
+    });
+    
     formData.value[fieldId] = value;
+    
+    console.log('[DynamicForm] Form data after update:', formData.value);
     
     // Clear field errors when user starts typing
     if (formErrors.value[fieldId]) {
@@ -103,20 +120,92 @@ function updateField(fieldId, value) {
     }
 }
 
+// Get only visible fields for validation
+function getVisibleFieldsForValidation() {
+    if (!processedFields.value) {
+        return [];
+    }
+    
+    // Get all fields (including nested ones from groups)
+    const allFields = processedFields.value.hasSteps ? getAllStepFields() : processedFields.value.rootFields;
+    
+    // Flatten nested fields and filter by visibility
+    const flattenedFields = [];
+    
+    function processField(field) {
+        // Check if this specific field is visible
+        const isFieldVisible = formConfigService.checkFieldVisibility(field, formData.value);
+        
+        console.log(`[DynamicForm] Checking field visibility: ${field.id || field.name}`, {
+            type: field.type,
+            isVisible: isFieldVisible,
+            hasVisibility: !!field.visibility,
+            formData: formData.value
+        });
+        
+        if (field.type === 'group') {
+            // For groups, only process children if the group itself is visible
+            if (isFieldVisible && field.children) {
+                field.children.forEach(childId => {
+                    const childField = processedFields.value.fieldMap.get(childId);
+                    if (childField) {
+                        processField(childField);
+                    }
+                });
+            }
+        } else if (!['divider', 'image', 'video', 'step'].includes(field.type)) {
+            // For regular fields, add them if visible
+            if (isFieldVisible) {
+                flattenedFields.push(field);
+            }
+        }
+    }
+    
+    allFields.forEach(processField);
+    
+    console.log('[DynamicForm] Final visible fields for validation:', flattenedFields.map(f => ({
+        id: f.id || f.name,
+        type: f.type,
+        label: f.label,
+        required: f.required
+    })));
+    
+    return flattenedFields;
+}
+
 // Validate form
 function validateForm() {
-    if (!processedFields.value) return false;
+    console.log('[DynamicForm] validateForm called');
     
-    // Get all visible fields
-    const visibleFields = formConfigService.getVisibleFields(
-        processedFields.value.hasSteps ? getAllStepFields() : processedFields.value.rootFields,
-        formData.value,
-        processedFields.value.fieldMap
-    );
+    if (!processedFields.value) {
+        console.log('[DynamicForm] No processed fields available');
+        return false;
+    }
     
-    // Validate
+    // Get only visible fields for validation
+    const visibleFields = getVisibleFieldsForValidation();
+    
+    console.log('[DynamicForm] Visible fields for validation:', visibleFields.map(f => ({
+        id: f.id || f.name,
+        type: f.type,
+        required: f.required,
+        currentValue: formData.value[f.id || f.name]
+    })));
+    
+    // Validate only visible fields
     const validation = formValidationService.validateForm(visibleFields, formData.value);
+    
+    // Clear all previous errors first
+    formErrors.value = {};
+    
+    // Set new errors only for visible fields
     formErrors.value = validation.errors;
+    
+    console.log('[DynamicForm] Validation result:', {
+        hasErrors: validation.hasErrors,
+        errors: validation.errors,
+        visibleFieldCount: visibleFields.length
+    });
     
     return !validation.hasErrors;
 }
@@ -133,27 +222,58 @@ function getAllStepFields() {
 
 // Handle form submission
 async function handleSubmit() {
+    console.log('[DynamicForm] handleSubmit called');
+    console.log('[DynamicForm] Current form data:', formData.value);
+    console.log('[DynamicForm] Submitting state:', submitting.value);
+    
+    // Prevent double submission
+    if (submitting.value) {
+        console.log('[DynamicForm] Already submitting, ignoring');
+        return;
+    }
+    
     // Validate form
+    console.log('[DynamicForm] Starting validation...');
     if (!validateForm()) {
+        console.log('[DynamicForm] Validation failed, showing errors');
+        console.log('[DynamicForm] Current errors:', formErrors.value);
+        
+        // Show notification for validation errors
+        const errorCount = Object.keys(formErrors.value).length;
+        const firstError = Object.values(formErrors.value)[0]?.[0] || 'Please fix the form errors';
+        
+        // Show notification using common utility
+        common.notification(`Please fix form errors: ${firstError}`, false);
+        
         // Scroll to first error
         const firstErrorField = Object.keys(formErrors.value)[0];
-        const errorElement = document.getElementById(`field-${firstErrorField}`);
-        if (errorElement) {
-            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log('[DynamicForm] First error field:', firstErrorField);
+        
+        if (firstErrorField) {
+            // Wait a bit for the DOM to update with error messages
+            setTimeout(() => {
+                const errorElement = document.getElementById(`field-${firstErrorField}`);
+                console.log('[DynamicForm] Error element found:', !!errorElement);
+                if (errorElement) {
+                    errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
         }
         return;
     }
+    
+    console.log('[DynamicForm] Validation passed, proceeding with submission');
     
     try {
         submitting.value = true;
         error.value = null;
         
-        // Get visible fields for submission
-        const visibleFields = formConfigService.getVisibleFields(
-            processedFields.value.hasSteps ? getAllStepFields() : processedFields.value.rootFields,
-            formData.value,
-            processedFields.value.fieldMap
-        );
+        console.log('[DynamicForm] Setting submitting to true');
+        
+        // Get visible fields for submission (same logic as validation)
+        const visibleFields = getVisibleFieldsForValidation();
+        
+        console.log('[DynamicForm] Visible fields for submission:', visibleFields);
         
         // Prepare submission data
         const submissionData = formSubmissionService.prepareSubmissionData(
@@ -162,32 +282,50 @@ async function handleSubmit() {
             formConfig.value
         );
         
+        console.log('[DynamicForm] Prepared submission data:', submissionData);
+        
         // Include form configuration in the response
         const responseData = {
             ...submissionData,
             formConfig: formConfig.value // Include the full form configuration
         };
         
+        console.log('[DynamicForm] Final response data:', responseData);
+        
         // Submit form
         if (props.submissionEndpoint) {
+            console.log('[DynamicForm] Submitting to endpoint:', props.submissionEndpoint);
             const response = await formSubmissionService.submitForm(
                 props.submissionEndpoint,
                 submissionData
             );
             
+            console.log('[DynamicForm] API response:', response);
+            
             // Clear saved progress on successful submission
             formSubmissionService.clearProgress(props.formId);
             
+            // Show success notification
+            common.notification('Form submitted successfully!', true);
+            
             emit('submit', { ...response, formConfig: formConfig.value });
         } else {
+            console.log('[DynamicForm] No submission endpoint, emitting data directly');
             // Just emit the data if no submission endpoint
+            common.notification('Form completed successfully!', true);
             emit('submit', responseData);
         }
         
     } catch (err) {
+        console.error('[DynamicForm] Submission error:', err);
         error.value = err.message || 'Failed to submit form';
+        
+        // Show error notification
+        common.notification(err.message || 'Failed to submit form', false);
+        
         emit('error', err);
     } finally {
+        console.log('[DynamicForm] Setting submitting to false');
         submitting.value = false;
     }
 }
@@ -231,7 +369,7 @@ const successMessage = computed(() =>
 
 // Mount
 onMounted(() => {
-    console.log('DynamicForm component mounted');
+    console.log('[DynamicForm] component mounted');
     loadForm();
 });
 
