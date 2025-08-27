@@ -221,6 +221,7 @@ const handleTimezoneChanged = (timezone) => {
 };
 
 // Handle form submission
+const bookingResponse = ref(null);
 const handleFormSubmit = async (formData) => {
     // Add timezone and slot data to the form data
     formData.timezone = selectedTimezone.value;
@@ -239,7 +240,8 @@ const handleFormSubmit = async (formData) => {
         );
         
         if (response.success) {
-            // Store booking response data if needed
+            // ✅ Store booking response data
+            bookingResponse.value = response.data;
             console.log('Booking created successfully:', response.data);
             
             // Transition to confirmation view
@@ -265,6 +267,7 @@ const handleFormSubmit = async (formData) => {
         loading.value = false;
     }
 };
+
 
 // Go back to calendar view
 const handleBackToCalendar = () => {
@@ -521,6 +524,7 @@ fetchEventData();
                     :selectedTime="selectedTime"
                     :duration="selectedDuration"
                     :timezone="selectedTimezone"
+                    :booking="bookingResponse"
                 />
             </div>
         </div>

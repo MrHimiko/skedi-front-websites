@@ -1,3 +1,5 @@
+<!-- File: src/panels/front/plugins/events/pages/event/components/ConfirmationView.vue -->
+
 <script setup>
 import { computed } from 'vue';
 import ButtonComponent from '@form/button/view.vue';
@@ -30,8 +32,91 @@ const props = defineProps({
   bookingData: {
     type: Object,
     required: true
+  },
+  // ✅ NEW: Add booking response prop to get status
+  booking: {
+    type: Object,
+    default: () => ({})
   }
 });
+
+// ✅ NEW: Compute booking status
+const bookingStatus = computed(() => {
+  return props.booking?.status || 'confirmed';
+});
+
+// ✅ NEW: Check if booking is pending
+const isPending = computed(() => {
+  return bookingStatus.value === 'pending';
+});
+
+// ✅ NEW: Parse location properly
+const parsedLocation = computed(() => {
+  const eventLocation = props.event?.location;
+  
+  if (!eventLocation) {
+    return { type: 'online', display: 'Online Meeting' };
+  }
+  
+  // If it's already a parsed object
+  if (typeof eventLocation === 'object' && !Array.isArray(eventLocation)) {
+    return {
+      type: eventLocation.type || 'online',
+      display: getLocationDisplay(eventLocation)
+    };
+  }
+  
+  // If it's an array, take the first item
+  if (Array.isArray(eventLocation) && eventLocation.length > 0) {
+    const firstLocation = eventLocation[0];
+    return {
+      type: firstLocation.type || 'online', 
+      display: getLocationDisplay(firstLocation)
+    };
+  }
+  
+  // If it's a string (shouldn't happen but just in case)
+  if (typeof eventLocation === 'string') {
+    try {
+      const parsed = JSON.parse(eventLocation);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return {
+          type: parsed[0].type || 'online',
+          display: getLocationDisplay(parsed[0])
+        };
+      }
+    } catch (e) {
+      // Invalid JSON, treat as text
+      return { type: 'custom', display: eventLocation };
+    }
+  }
+  
+  return { type: 'online', display: 'Online Meeting' };
+});
+
+// Helper function to get location display text
+const getLocationDisplay = (locationObj) => {
+  if (!locationObj || !locationObj.type) {
+    return 'Online Meeting';
+  }
+  
+  switch (locationObj.type) {
+    case 'in_person':
+      return locationObj.address || 'In-Person Meeting';
+    case 'phone':
+      return 'Phone Call';
+    case 'google_meet':
+      return 'Google Meet';
+    case 'zoom':
+      return 'Zoom Meeting';
+    case 'teams':
+      return 'Microsoft Teams';
+    case 'custom':
+      return locationObj.label || 'Custom Location';
+    default:
+      return 'Online Meeting';
+  }
+};
 
 // Format date to display (e.g. "Friday, March 21, 2025")
 const formattedDate = computed(() => {
@@ -56,71 +141,74 @@ const formattedTime = computed(() => {
   // Format both times with AM/PM
   const formatTime = (hour, minute) => {
     const period = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const displayMinute = minute.toString().padStart(2, '0');
+    return `${displayHour}:${displayMinute} ${period}`;
   };
   
-  const formattedStart = formatTime(startHour, startMinute);
-  const formattedEnd = formatTime(endHour, endMinute);
+  const startTimeFormatted = formatTime(startHour, startMinute);
+  const endTimeFormatted = formatTime(endHour, endMinute);
   
-  return `${formattedStart} - ${formattedEnd}`;
+  return `${startTimeFormatted} - ${endTimeFormatted}`;
 });
 
-// Format timezone
+// Format timezone display
 const formattedTimezone = computed(() => {
-  return props.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!props.timezone) return '';
+  
+  try {
+    const timezone = new Intl.DateTimeFormat('en-US', {
+      timeZone: props.timezone,
+      timeZoneName: 'short'
+    }).formatToParts(new Date()).find(part => part.type === 'timeZoneName');
+    
+    return timezone ? timezone.value : props.timezone;
+  } catch (e) {
+    return props.timezone;
+  }
 });
 
-// Current date in ISO format for the <time> element
+// ISO date for datetime attribute
 const isoDate = computed(() => {
   return props.selectedDate.toISOString();
 });
 
-// Additional functions to handle calendar actions (to be implemented)
+// Calendar link functions (existing)
 function addToGoogleCalendar() {
-  // Implementation for adding to Google Calendar
-  window.open(generateGoogleCalendarUrl(), '_blank');
+  const url = generateGoogleCalendarUrl();
+  window.open(url, '_blank');
 }
 
 function addToOutlookCalendar() {
-  // Implementation for adding to Outlook
-  window.open(generateOutlookCalendarUrl(), '_blank');
+  const url = generateOutlookCalendarUrl();
+  window.open(url, '_blank');
 }
 
 function addToOffice365Calendar() {
-  // Implementation for adding to Office 365
-  window.open(generateOffice365CalendarUrl(), '_blank');
+  const url = generateOffice365CalendarUrl();
+  window.open(url, '_blank');
 }
 
 function downloadICS() {
-  // Implementation for downloading .ics file
-  const icsFileUrl = generateICSUrl();
-  
-  // Create and trigger download
-  const link = document.createElement('a');
-  link.href = icsFileUrl;
-  link.download = `${props.event.name.replace(/\s+/g, '-')}-${props.selectedDate.toISOString().split('T')[0]}.ics`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const url = generateICSUrl();
+  window.open(url, '_blank');
 }
 
-// Helper functions to generate calendar links (placeholder implementations)
 function generateGoogleCalendarUrl() {
-  // Convert local time to UTC for Google Calendar
   const [startHour, startMinute] = props.selectedTime.split(':').map(Number);
-  const dateObj = new Date(props.selectedDate);
-  dateObj.setHours(startHour, startMinute, 0, 0);
   
-  // Format as ISO string for Google Calendar
-  const startDate = dateObj.toISOString().replace(/-|:|\.\d+/g, '');
+  // Create start datetime
+  const startDate = new Date(props.selectedDate);
+  startDate.setHours(startHour, startMinute, 0, 0);
   
-  // Calculate end time
-  const endDate = new Date(dateObj);
-  endDate.setMinutes(endDate.getMinutes() + props.duration);
-  const endDateStr = endDate.toISOString().replace(/-|:|\.\d+/g, '');
+  // Create end datetime
+  const endDate = new Date(startDate.getTime() + props.duration * 60000);
   
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(props.event.name)}&dates=${startDate}/${endDateStr}&details=${encodeURIComponent('Meeting scheduled via Skedi')}&ctz=${encodeURIComponent(props.timezone)}`;
+  // Format for Google Calendar (YYYYMMDDTHHMMSSZ)
+  const startDateStr = startDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/g, '');
+  const endDateStr = endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/g, '');
+  
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(props.event.name)}&dates=${startDateStr}/${endDateStr}&details=${encodeURIComponent('Meeting scheduled via Skedi')}&ctz=${encodeURIComponent(props.timezone)}`;
 }
 
 function generateOutlookCalendarUrl() {
@@ -142,18 +230,27 @@ function generateICSUrl() {
 <template>
   <div class="confirmation-view">
     <div class="confirmation-icon">
-      <div class="success-icon">
-        <i class="material-icons-outlined">check</i>
+      <!-- ✅ Different icon based on status -->
+      <div class="success-icon" :class="{ 'pending-icon': isPending }">
+        <i class="material-icons-outlined">{{ isPending ? 'schedule' : 'check' }}</i>
       </div>
     </div>
     
-    <h1 class="confirmation-title">This meeting is scheduled</h1>
-    <p class="confirmation-description">We sent an email with a calendar invitation with the details to everyone.</p>
+    <!-- ✅ Different title and description based on status -->
+    <h1 class="confirmation-title" v-if="isPending">Booking Request Sent</h1>
+    <h1 class="confirmation-title" v-else>This meeting is scheduled</h1>
+
+    <p class="confirmation-description" v-if="isPending">
+      Your booking request has been sent to {{ organization.name || 'the host' }} for approval. You'll receive a confirmation email once approved.
+    </p>
+    <p class="confirmation-description" v-else>
+      We sent an email with a calendar invitation with the details to everyone.
+    </p>
     
     <div class="confirmation-details">
       <div class="detail-row">
         <div class="detail-label">What</div>
-        <div class="detail-value">{{ event.name }} between {{ organization.name || 'Host' }} and {{ bookingData.name }}</div>
+        <div class="detail-value">{{ event.name }} between {{ organization.name || 'Host' }} and you</div>
       </div>
       
       <div class="detail-row">
@@ -165,28 +262,12 @@ function generateICSUrl() {
       </div>
       
       <div class="detail-row">
-        <div class="detail-label">Who</div>
-        <div class="detail-value">
-          <div class="detail-user">
-            <span class="detail-user-name">{{ organization.name || 'Host' }}</span>
-            <span class="detail-user-tag">Host</span>
-          </div>
-          <div class="detail-user-email">host@example.com</div>
-          
-          <div class="detail-user">
-            <span class="detail-user-name">{{ bookingData.name }}</span>
-          </div>
-          <div class="detail-user-email">{{ bookingData.email }}</div>
-        </div>
-      </div>
-      
-      <div class="detail-row">
         <div class="detail-label">Where</div>
         <div class="detail-value">
-          <a href="#" class="detail-link">
-            {{ event.location || 'Skedi Meeting' }}
-            <i class="material-icons-outlined link-icon">open_in_new</i>
-          </a>
+          <div class="location-info">
+            {{ parsedLocation.display }}
+            <div class="location-note">Instructions sent via email</div>
+          </div>
         </div>
       </div>
       
@@ -195,9 +276,18 @@ function generateICSUrl() {
         <div class="detail-label">Notes</div>
         <div class="detail-value detail-notes">{{ bookingData.notes }}</div>
       </div>
+
+      <!-- ✅ Show status for pending bookings -->
+      <div class="detail-row" v-if="isPending">
+        <div class="detail-label">Status</div>
+        <div class="detail-value">
+          <span class="status-pending">⏳ Awaiting approval</span>
+        </div>
+      </div>
     </div>
     
-    <div class="confirmation-actions">
+    <!-- ✅ Different actions based on status -->
+    <div class="confirmation-actions" v-if="!isPending">
       <div class="action-label">Need to make a change?</div>
       <div class="action-buttons">
         <button class="action-button">Reschedule</button>
@@ -205,8 +295,21 @@ function generateICSUrl() {
         <button class="action-button">Cancel</button>
       </div>
     </div>
+
+    <!-- ✅ Different info section based on status -->
+    <div class="pending-info" v-if="isPending">
+      <div class="info-card">
+        <h3>What happens next?</h3>
+        <ul>
+          <li>{{ organization.name || 'The host' }} will review your booking request</li>
+          <li>You'll receive an email confirmation once approved</li>
+          <li>If approved, calendar invitations will be sent automatically</li>
+        </ul>
+      </div>
+    </div>
     
-    <div class="calendar-options">
+    <!-- ✅ Only show calendar options for confirmed bookings -->
+    <div class="calendar-options" v-if="!isPending">
       <div class="calendar-label">Add to calendar</div>
       <div class="calendar-buttons">
         <button @click="addToGoogleCalendar" class="calendar-button">
@@ -252,6 +355,11 @@ function generateICSUrl() {
   margin: 0 auto;
 }
 
+/* ✅ Different styling for pending status */
+.success-icon.pending-icon {
+  background-color: #ff6f60; /* Orange color as requested */
+}
+
 .success-icon i {
   font-size: 36px;
   color: white;
@@ -267,6 +375,7 @@ function generateICSUrl() {
   color: #a3a3a3;
   margin-top: 0;
   margin-bottom: 32px;
+  max-width: 400px;
 }
 
 .confirmation-details {
@@ -298,46 +407,28 @@ function generateICSUrl() {
   flex: 1;
 }
 
-.detail-user {
+/* ✅ New location styling */
+.location-info {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.detail-user-tag {
-  background-color: #4f46e5;
-  color: white;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.detail-user-email {
-  color: #a3a3a3;
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-.detail-user-email:last-of-type {
-  margin-bottom: 0;
-}
-
-.detail-link {
-  color: #4f46e5;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 4px;
 }
 
-.link-icon {
-  font-size: 16px;
+.location-note {
+  font-size: 12px;
+  color: #a3a3a3;
+  font-style: italic;
 }
 
 .detail-notes {
   color: #a3a3a3;
   white-space: pre-wrap;
+}
+
+/* ✅ Updated status styling with new orange color */
+.status-pending {
+  color: #ff6f60;
+  font-weight: 500;
 }
 
 .confirmation-actions {
@@ -368,6 +459,52 @@ function generateICSUrl() {
 
 .action-separator {
   color: #a3a3a3;
+}
+
+/* ✅ New pending info styling */
+.pending-info {
+  margin-bottom: 32px;
+  width: 100%;
+}
+
+.info-card {
+  background-color: #000;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: left;
+}
+
+.info-card h3 {
+  color: #f3f4f6;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+
+.info-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-card li {
+  color: #d1d5db;
+  font-size: 14px;
+  margin-bottom: 8px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.info-card li::before {
+  content: '•';
+  color: #ff6f60;
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+.info-card li:last-child {
+  margin-bottom: 0;
 }
 
 .calendar-options {
