@@ -348,7 +348,7 @@ const fetchEventData = async () => {
         // Try the combined initial-load endpoint first
         try {
             const response = await api.get(
-                `public/organizations/${organizationSlug}/events/${eventSlug}/initial-load?timezone=${encodeURIComponent(selectedTimezone.value)}&duration=${selectedDuration.value}&buffer_hours=1`
+                `public/organizations/${organizationSlug}/events/${eventSlug}/initial-load?timezone=${encodeURIComponent(selectedTimezone.value)}&duration=${selectedDuration.value}`
             );
             
             if (response.success && response.data.event && response.data.initial_slots) {

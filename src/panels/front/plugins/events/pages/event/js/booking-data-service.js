@@ -174,7 +174,7 @@ export default {
         return dateObj.toISOString().replace('T', ' ').substring(0, 19);
     },
 
-    getAvailableSlots(eventSlug, orgSlug, date, duration, timezone = null, bufferHours = 1) {
+    getAvailableSlots(eventSlug, orgSlug, date, duration, timezone = null) {
         const formattedDate = date.toISOString().split('T')[0];
         let url = `public/organizations/${orgSlug}/events/${eventSlug}/available-slots?date=${formattedDate}&duration=${duration}`;
         
@@ -183,8 +183,6 @@ export default {
             url += `&timezone=${encodeURIComponent(timezone)}`;
         }
         
-        // Add buffer hours parameter
-        url += `&buffer_hours=${bufferHours}`;
         
         return api.get(url);
     }
