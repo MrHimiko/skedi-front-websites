@@ -14,6 +14,15 @@ export default class
     routes()
     {
 
+        // Event page route (existing)
+        this.router.addRoute({
+            path: '/',
+            name: 'Home',
+            component: () => import('./pages/home/view.vue'),
+            props: true
+        });
+
+
         // Organization page route
         this.router.addRoute({
             path: '/:organizationSlug',
