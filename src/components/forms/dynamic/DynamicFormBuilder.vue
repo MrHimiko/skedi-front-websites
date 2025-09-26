@@ -353,6 +353,10 @@ const showProgressBar = computed(() => {
     flex: 1;
 }
 
+.spacer:empty {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .fields-grid {
         gap: 16px;

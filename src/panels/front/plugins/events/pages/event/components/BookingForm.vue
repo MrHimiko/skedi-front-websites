@@ -247,7 +247,7 @@ function handleBack() {
                     <i class="material-icons-outlined">
                         {{ event.location_type === 'physical' ? 'location_on' : 'videocam' }}
                     </i>
-                    <span>{{ event.location || 'Skedi Meeting' }}</span>
+                    <span>{{ event.location[0].display_name || 'Skedi Meeting' }}</span>
                 </div>
             </div>
             
@@ -334,9 +334,6 @@ function handleBack() {
     font-size: 14px;
 }
 
-.booking-location {
-    margin-top: 4px;
-}
 
 .material-icons-outlined {
     color: var(--text-tertiary);
