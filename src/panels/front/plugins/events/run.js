@@ -47,6 +47,13 @@ export default class
             props: true
         });
 
-        console.log('All routes:', this.router.getRoutes());
+        this.router.addRoute({
+            path: '/manage/:token',
+            name: 'ManageBooking',
+            component: () => import('./pages/manage-booking/view.vue'),
+            props: true
+        });
+
+       
     }
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter  } from 'vue-router';
 import { api } from '@utils/api';
 
 // Import Components
@@ -12,6 +12,7 @@ import ConfirmationView from './components/ConfirmationView.vue';
 import bookingDataService from './js/booking-data-service';
 
 const route = useRoute();
+const router = useRouter();
 const organizationSlug = route.params.organizationSlug;
 const eventSlug = route.params.eventSlug;
 
@@ -240,12 +241,17 @@ const handleFormSubmit = async (formData) => {
         );
         
         if (response.success) {
-            // ✅ Store booking response data
+            // Store booking response data
             bookingResponse.value = response.data;
             console.log('Booking created successfully:', response.data);
             
-            // Transition to confirmation view
-            viewState.value = 'CONFIRMATION';
+            // Redirect to manage booking page if token exists
+            if (response.data.booking_token) {
+                router.push(`/manage/${response.data.booking_token}`);
+            } else {
+                // Fallback to old confirmation view if no token
+                viewState.value = 'CONFIRMATION';
+            }
         } else {
             // Handle API error with more details
             console.error('API Error:', response);
