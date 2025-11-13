@@ -130,41 +130,67 @@ const formattedDate = computed(() => {
 
 // Format time range (e.g. "11:30 AM - 12:00 PM")
 const formattedTime = computed(() => {
-  // Parse the start time (e.g., "11:30")
+  // Create a Date object in the booking's timezone
   const [startHour, startMinute] = props.selectedTime.split(':').map(Number);
+  const bookingDate = new Date(props.selectedDate);
+  bookingDate.setHours(startHour, startMinute, 0, 0);
   
-  // Calculate end time by adding duration
-  const endMinutes = startHour * 60 + startMinute + props.duration;
-  const endHour = Math.floor(endMinutes / 60) % 24;
-  const endMinute = endMinutes % 60;
+  // If we have a booking timezone, we need to interpret the time in that timezone
+  // Then convert to viewer's local timezone
+  let localStartTime;
   
-  // Format both times with AM/PM
-  const formatTime = (hour, minute) => {
+  if (props.timezone) {
+    // Create a date string in the booking timezone
+    const dateStr = props.selectedDate.toISOString().split('T')[0];
+    const timeStr = `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}:00`;
+    const dateTimeStr = `${dateStr}T${timeStr}`;
+    
+    // Parse as if it's in the booking timezone
+    const bookingTimeInTZ = new Date(dateTimeStr + 'Z'); // Treat as UTC first
+    
+    // Get the offset difference between booking TZ and viewer's TZ
+    const viewerOffset = new Date().getTimezoneOffset(); // minutes
+    
+    // Convert to viewer's local time by creating a new Date
+    // This will automatically show in the viewer's timezone
+    localStartTime = new Date(bookingDate.toLocaleString('en-US', { timeZone: props.timezone }));
+  } else {
+    localStartTime = bookingDate;
+  }
+  
+  // Calculate end time
+  const localEndTime = new Date(localStartTime.getTime() + props.duration * 60000);
+  
+  // Format both times with AM/PM in viewer's local timezone
+  const formatTime = (date) => {
+    const hour = date.getHours();
+    const minute = date.getMinutes();
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     const displayMinute = minute.toString().padStart(2, '0');
     return `${displayHour}:${displayMinute} ${period}`;
   };
   
-  const startTimeFormatted = formatTime(startHour, startMinute);
-  const endTimeFormatted = formatTime(endHour, endMinute);
-  
-  return `${startTimeFormatted} - ${endTimeFormatted}`;
+  return `${formatTime(localStartTime)} - ${formatTime(localEndTime)}`;
 });
+
+
+
 
 // Format timezone display
 const formattedTimezone = computed(() => {
-  if (!props.timezone) return '';
-  
   try {
+    // Get the viewer's local timezone
+    const viewerTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
     const timezone = new Intl.DateTimeFormat('en-US', {
-      timeZone: props.timezone,
+      timeZone: viewerTimezone,
       timeZoneName: 'short'
     }).formatToParts(new Date()).find(part => part.type === 'timeZoneName');
     
-    return timezone ? timezone.value : props.timezone;
+    return timezone ? timezone.value : viewerTimezone;
   } catch (e) {
-    return props.timezone;
+    return 'Local Time';
   }
 });
 
